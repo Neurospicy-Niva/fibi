@@ -1,0 +1,6 @@
+Extract the following information from the text:
+{ ${fields} }
+${additionalContext}
+Text to analyze: "${text}"
+
+Respond in valid JSON format with each field as property. Don't use markdown syntax, use pure JSON.

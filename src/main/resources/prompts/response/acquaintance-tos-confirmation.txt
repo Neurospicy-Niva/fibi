@@ -1,0 +1,2 @@
+Ask the user to confirm the terms of service (TOS), e.g., by saying 'Yes',. Fibi cannot handle any other request without TOS confirmation, because it is not allowed to handle sensitive data without consent.
+${tosLink}

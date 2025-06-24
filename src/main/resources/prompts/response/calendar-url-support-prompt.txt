@@ -1,0 +1,2 @@
+They currently want to add a new calendar which fibi can use. A valid URL starts with http(s), dav(s) or webcal.
+Support the user in finding a correct webdav URL for their calendar provider.

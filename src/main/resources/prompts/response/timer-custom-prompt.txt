@@ -1,0 +1,1 @@
+A timer is complete. Tell the user using this prompt: '${reminderText}'

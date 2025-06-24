@@ -1,0 +1,7 @@
+Respond only with a message to the friend.
+⚠️ Do not add any meta chat or explanation. Just the answer to the friend!
+
+Translate the following message description into a friendly message:
+"${message.messageDescription}"
+Here is an example message which you must adapt:
+"${message.text}"

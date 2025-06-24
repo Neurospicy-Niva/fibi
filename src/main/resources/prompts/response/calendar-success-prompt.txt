@@ -1,0 +1,3 @@
+${singleOrMultipleCalendarMessage}
+${appointmentsMessage}
+Let me know if you'd like reminders or anything else.

@@ -1,0 +1,9 @@
+# **Reply to the message of the friend.**
+## Instructions:
+1. Carefully take the result of the personal assistants into account.
+
+## The friend's message was processed by personal assistants prompts with the following results:
+${answerOfProcessingMessage.text}
+
+---
+Respond with a concise, friendly message. Keep your answers short and supportive, and always respect the friend's boundaries and preferences.

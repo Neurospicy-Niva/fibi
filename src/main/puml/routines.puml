@@ -1,0 +1,112 @@
+@startuml
+
+class RoutineTemplate {
+  +String id
+  +String title
+  +String description
+  +List<RoutineStep> setupSteps
+  +List<RoutinePhase> phases
+  +List<RoutineTrigger> triggers
+}
+
+class RoutinePhase {
+  +String id
+  +String title
+  +TriggerCondition condition
+  +List<RoutineStep> steps
+}
+
+class RoutineStep {
+  +String id
+  +RoutineStepType type
+  +String description
+  +String? parameterKey
+  +String? timeOfDay
+  +Integer? expectedDurationMinutes
+  +Boolean? expectConfirmation
+}
+
+enum RoutineStepType {
+  action
+  parameter_request
+  message
+}
+
+class RoutineTrigger {
+  +String id
+  +TriggerCondition condition
+  +TriggerEffect effect
+}
+
+interface TriggerCondition
+class AfterDays
+class AfterPhaseCompletions
+class AfterDuration
+class AfterUserConfirmation
+
+TriggerCondition <|-- AfterDays
+TriggerCondition <|-- AfterPhaseCompletions
+TriggerCondition <|-- AfterDuration
+TriggerCondition <|-- AfterUserConfirmation
+
+AfterDays : +int value
+AfterPhaseCompletions : +String phaseId
+AfterPhaseCompletions : +int times
+AfterDuration : +String reference
+AfterDuration : +String duration
+AfterUserConfirmation : +String confirmationKey
+
+enum RoutineTriggerConditionType {
+  after_days
+  after_phase_completions
+  after_duration
+  after_user_confirmation
+}
+
+interface TriggerEffect
+class SendMessage
+class CreateTask
+
+TriggerEffect <|-- SendMessage
+TriggerEffect <|-- CreateTask
+
+SendMessage : +String message
+CreateTask : +String taskDescription
+CreateTask : +String confirmationKey
+
+enum RoutineTriggerEffectType {
+  send_message
+  create_task
+}
+
+class RoutineInstance {
+  +String routineId
+  +String friendshipId
+  +Map<String, String> parameters
+  +String currentPhaseId
+  +RoutineProgress progress
+}
+
+class RoutineProgress {
+  +Set<String> completedSteps
+  +Set<String> completedPhases
+  +Set<String> confirmedKeys
+}
+
+class RoutineConcept {
+  +String key // z. B. "breakfastReady"
+  +String conceptId // z. B. "routine:breakfastReady"
+  +String type // z. B. "task"
+  +String? linkedEntityId // z. B. TaskId
+}
+
+RoutineTemplate "1" *-- "many" RoutinePhase
+RoutineTemplate "1" *-- "many" RoutineTrigger
+RoutineTemplate "1" *-- "many" RoutineStep : setup
+RoutinePhase "1" *-- "many" RoutineStep
+RoutineTrigger --> TriggerCondition
+RoutineTrigger --> TriggerEffect
+RoutineInstance --> RoutineProgress
+RoutineInstance --> "many" RoutineConcept
+
+@enduml
