@@ -1,0 +1,17 @@
+spring:
+  data:
+    mongodb:
+      username: fibiapp
+      password: whydoesitalwaysRAINonme
+      database: fibi
+      host: mongodb
+      authentication-database: fibi
+  ai:
+    ollama:
+      base-url: https://ai-mini.neurospicy.icu
+signal-cli:
+  api-url: http://signal-cli-mock:8081/api/v1
+logging:
+  level:
+    org.springframework.beans.factory.support: ERROR
+    org.springframework.context.annotation: ERROR

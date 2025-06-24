@@ -1,0 +1,19 @@
+Your task is to determine exactly what the user wants based on their last message. Base your answer on this instructions:
+1. You must pick exactly one main intent of the following intents (categories).
+2. The user might address several concerns in their message and have likely other intents. Therefore, you may add likely other intents. BUT, only add them if you are sure they are **very** likely.
+
+Here are the intents with their descriptions and examples:
+${possibleIntents}
+
+${chatHistory}
+
+Message to analyze:
+ ```
+ ${messageText}
+ ```
+
+Respond in the exact JSON format.
+{
+ "intent": "...",
+ "likelyOtherIntents": ["...", "..."]
+}

@@ -1,0 +1,2 @@
+Ask the user to confirm the terms of service (TOS), e.g., by saying 'Yes', and answer the question of the user as far as you know the answer.
+They can get additional information at https://neurospicy.icu/features
