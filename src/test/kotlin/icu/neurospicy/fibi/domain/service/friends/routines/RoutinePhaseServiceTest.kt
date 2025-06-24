@@ -296,15 +296,20 @@ class RoutinePhaseServiceTest {
                 )
             }
             justRun {
-                routineScheduler.removeScheduleFor(
-                    instance.friendshipId, instance.instanceId, phase.id, any<RoutineStepId>()
-                )
+                routineScheduler.removeScheduleFor(any(), any(), any(), any<RoutineStepId>())
             }
+            justRun { eventLog.log(any()) }
+            justRun { eventPublisher.publishEvent(any()) }
             every { templateRepository.findById(template.templateId) } returns template
             val reason = "Overload"
 
             service.handleStoppedRoutineIteration(instance, reason)
 
+            verify(exactly = incompleteScheduledSteps.size) {
+                routineScheduler.removeScheduleFor(
+                    any(), any(), any(), any()
+                )
+            }
             incompleteScheduledSteps.forEach { step ->
                 verify {
                     routineScheduler.removeScheduleFor(
@@ -312,16 +317,16 @@ class RoutinePhaseServiceTest {
                     )
                 }
             }
-            verify(exactly = incompleteScheduledSteps.size) {
-                routineScheduler.removeScheduleFor(
-                    any(), any(), any(), any()
-                )
-                eventLog.log(
-                    RoutineEventLogEntry(
-                        instance.instanceId, instance.friendshipId, RoutineEventType.ROUTINE_STOPPED_FOR_TODAY,
-                        Instant.now(), match { it["reason"] == reason })
-                )
-                eventPublisher.publishEvent(StoppedTodaysRoutine(any(), instance.friendshipId, instance.instanceId))
+            verify {
+                eventLog.log(match<RoutineEventLogEntry> {
+                    it.routineInstanceId == instance.instanceId && it.friendshipId == instance.friendshipId && it.event == RoutineEventType.ROUTINE_STOPPED_FOR_TODAY && Duration.between(
+                        it.timestamp,
+                        Instant.now()
+                    ) < Duration.ofSeconds(3) && it.metadata["reason"] == reason
+                })
+                eventPublisher.publishEvent(match<StoppedTodaysRoutine> {
+                    it.friendshipId == instance.friendshipId && it.instanceId == instance.instanceId
+                })
             }
         }
     }
