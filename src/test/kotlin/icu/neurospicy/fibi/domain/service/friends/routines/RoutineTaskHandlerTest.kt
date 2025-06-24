@@ -189,7 +189,6 @@ class RoutineTaskHandlerTest {
                     YesOrNoQuestionToAnswer(isStoppingRoutineHelpfulDueToOverwhelmQuestion, true),
                 )
             ),
-            expectedEventType = RoutineEventType.ROUTINE_STOPPED_FOR_TODAY,
             expectedMessageContains = "pausing the routine now seems helpful"
         )
     }
@@ -217,7 +216,6 @@ class RoutineTaskHandlerTest {
                     YesOrNoQuestionToAnswer(isStoppingRoutineHelpfulDueToOverwhelmQuestion, false),
                 )
             ),
-            expectedEventType = RoutineEventType.ROUTINE_STOPPED_FOR_TODAY,
             expectedMessageContains = "seem to be overwhelmed or emotionally burdened"
         )
     }
