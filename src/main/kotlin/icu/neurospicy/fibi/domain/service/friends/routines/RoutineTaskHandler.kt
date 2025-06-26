@@ -8,7 +8,7 @@ import icu.neurospicy.fibi.domain.repository.ChatRepository
 import icu.neurospicy.fibi.domain.service.friends.communication.FriendStateAnalyzer
 import icu.neurospicy.fibi.domain.service.friends.communication.Mood
 import icu.neurospicy.fibi.domain.service.friends.interaction.*
-import icu.neurospicy.fibi.domain.service.friends.routines.events.ActionStepConfirmed
+import icu.neurospicy.fibi.domain.service.friends.routines.events.ConfirmedActionStep
 import icu.neurospicy.fibi.domain.service.friends.routines.events.StopRoutineForToday
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
@@ -30,15 +30,15 @@ class RoutineTaskHandler(
     companion object {
         private val LOG = LoggerFactory.getLogger(RoutineTaskHandler::class.java)
 
-        internal const val didUserIntendToStopRoutineQuestion =
+        internal const val DID_USER_INTEND_TO_STOP_ROUTINE_QUESTION =
             "The user deleted a task which is key part of a routine. Did the user explicitly intend to stop the routine?"
 
-        internal const val isUserStressedQuestion = "Does the user appear stressed or overwhelmed?"
+        internal const val IS_USER_STRESSED_QUESTION = "Does the user appear stressed or overwhelmed?"
 
-        internal const val wasDeletionOfTaskAMistakeQuestion =
+        internal const val WAS_DELETION_OF_TASK_A_MISTAKE_QUESTION =
             "Was deleting the specific task \"\$taskTitle\" a mistake?"
 
-        internal const val isStoppingRoutineHelpfulDueToOverwhelmQuestion =
+        internal const val IS_STOPPING_ROUTINE_HELPFUL_DUE_TO_OVERWHELM_QUESTION =
             "By deleting the task, the user stopped a routine. Would it be helpful to pause the routine for now?"
     }
 
@@ -83,7 +83,7 @@ class RoutineTaskHandler(
                     )
                 )
                 eventPublisher.publishEvent(
-                    ActionStepConfirmed(
+                    ConfirmedActionStep(
                         this.javaClass,
                         friendshipId,
                         instance.instanceId,
@@ -106,10 +106,10 @@ class RoutineTaskHandler(
 
         val recentMessages = loadRecentMessages(friendshipId)
         val questions = listOf(
-            didUserIntendToStopRoutineQuestion,
-            isUserStressedQuestion,
-            wasDeletionOfTaskAMistakeQuestion.replace("\$taskTitle", event.task.title),
-            isStoppingRoutineHelpfulDueToOverwhelmQuestion
+            DID_USER_INTEND_TO_STOP_ROUTINE_QUESTION,
+            IS_USER_STRESSED_QUESTION,
+            WAS_DELETION_OF_TASK_A_MISTAKE_QUESTION.replace("\$taskTitle", event.task.title),
+            IS_STOPPING_ROUTINE_HELPFUL_DUE_TO_OVERWHELM_QUESTION
         )
         val (answers, emotions) = runBlocking {
             friendStateAnalyzer.analyze(
@@ -117,24 +117,25 @@ class RoutineTaskHandler(
                 questions = questions
             )
         }
-        val intendedStop = answers.firstOrNull { it.question == didUserIntendToStopRoutineQuestion }?.answer == true
+        val intendedStop =
+            answers.firstOrNull { it.question == DID_USER_INTEND_TO_STOP_ROUTINE_QUESTION }?.answer == true
         val stressedOrSad = emotions.any { it.mood in setOf(Mood.Stressed, Mood.Sad) && it.confidence > 0.75 }
-        val userStressed = answers.firstOrNull { it.question == isUserStressedQuestion }?.answer == true
+        val userStressed = answers.firstOrNull { it.question == IS_USER_STRESSED_QUESTION }?.answer == true
                 || stressedOrSad
         val mistakenDelete = answers.firstOrNull {
-            it.question == wasDeletionOfTaskAMistakeQuestion.replace(
+            it.question == WAS_DELETION_OF_TASK_A_MISTAKE_QUESTION.replace(
                 "\$taskTitle",
                 event.task.title
             )
         }?.answer == true
         val pauseHelpful =
-            answers.firstOrNull { it.question == isStoppingRoutineHelpfulDueToOverwhelmQuestion }?.answer == true
+            answers.firstOrNull { it.question == IS_STOPPING_ROUTINE_HELPFUL_DUE_TO_OVERWHELM_QUESTION }?.answer == true
         when {
             !intendedStop && mistakenDelete -> handleOnTaskRemovedWhenMistake(instance, event)
             userStressed -> handleOnTaskRemovedWhenOverwhelmed(instance, friendshipId, event)
             pauseHelpful -> handleOnTaskRemovedWhenPauseIsHelpful(instance, friendshipId, event)
             intendedStop && !userStressed -> handleOnTaskRemovedWhenIntendedStop(instance, friendshipId, event)
-            else -> handleOnTaskRemovedWhenUncertain(instance, friendshipId, event)
+            else -> handleOnTaskRemovedWhenUncertain(instance, event)
         }
     }
 
@@ -147,7 +148,6 @@ class RoutineTaskHandler(
         prepareAndSaveGoalToStopRoutineToday(
             instance = instance,
             friendshipId = friendshipId,
-            templateTitle = templateTitle,
             question = "It looks like you wanted to stop the routine. Would you like to be reminded to resume later?",
             taskId = event.task.id!!
         )
@@ -213,7 +213,6 @@ class RoutineTaskHandler(
         event: TaskRemoved,
     ) {
         val instanceId = instance.instanceId
-        val now = Instant.now()
         eventPublisher.publishEvent(
             StopRoutineForToday(
                 _source = this::class.java,
@@ -252,7 +251,6 @@ class RoutineTaskHandler(
         prepareAndSaveGoalToStopRoutineToday(
             instance = instance,
             friendshipId = friendshipId,
-            templateTitle = templateTitle,
             question = "It looks as if the task \"${event.task.title}\" has been deleted by mistake. Do you want to recreate the task and continue the routine?",
             taskId = event.task.id!!
         )
@@ -276,7 +274,6 @@ class RoutineTaskHandler(
 
     private fun handleOnTaskRemovedWhenUncertain(
         instance: RoutineInstance,
-        friendshipId: FriendshipId,
         event: TaskRemoved,
     ) {
         val templateTitle = templateRepository.findById(instance.templateId)?.title ?: "<The title is not known>"
@@ -284,7 +281,6 @@ class RoutineTaskHandler(
         prepareAndSaveGoalToStopRoutineToday(
             instance = instance,
             friendshipId = friendshipId,
-            templateTitle = templateTitle,
             question = "Do you want to recreate the task and continue the routine or do you want to continue later?",
             taskId = event.task.id!!
         )
@@ -310,7 +306,6 @@ class RoutineTaskHandler(
     private fun prepareAndSaveGoalToStopRoutineToday(
         instance: RoutineInstance,
         friendshipId: FriendshipId,
-        templateTitle: String,
         question: String,
         taskId: String,
     ) {

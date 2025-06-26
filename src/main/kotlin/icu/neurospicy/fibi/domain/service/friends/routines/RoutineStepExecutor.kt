@@ -6,7 +6,9 @@ import icu.neurospicy.fibi.domain.model.Task
 import icu.neurospicy.fibi.domain.model.events.SendMessageCmd
 import icu.neurospicy.fibi.domain.repository.TaskRepository
 import icu.neurospicy.fibi.domain.service.friends.interaction.*
+import icu.neurospicy.fibi.domain.service.friends.routines.events.ConfirmedActionStep
 import icu.neurospicy.fibi.domain.service.friends.routines.events.RoutineStepTriggered
+import icu.neurospicy.fibi.domain.service.friends.routines.events.SentMessageForRoutineStep
 import org.slf4j.LoggerFactory
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
@@ -130,6 +132,15 @@ class RoutineStepExecutor(
                 OutgoingTextMessage(Channel.SIGNAL, step.message)
             )
         )
+        eventPublisher.publishEvent(
+            SentMessageForRoutineStep(
+                this.javaClass,
+                event.friendshipId,
+                event.instanceId,
+                event.phaseId,
+                event.stepId
+            )
+        )
         instanceRepository.save(
             instance.copy(
                 progress = instance.progress.copy(
@@ -160,7 +171,18 @@ class RoutineStepExecutor(
         stepParameters: Map<String, Any>,
     ) {
         val eventLogParameters = stepParameters.toMutableMap()
+
+        // Send the action message
+        eventPublisher.publishEvent(
+            SendMessageCmd(
+                this.javaClass,
+                event.friendshipId,
+                OutgoingTextMessage(Channel.SIGNAL, step.description)
+            )
+        )
+
         if (step.expectConfirmation) {
+            // Create task for confirmation-based steps
             val taskId = taskRepository.save(Task(owner = event.friendshipId, title = step.description)).let { it.id!! }
             instanceRepository.save(
                 instance.copy(
@@ -171,22 +193,51 @@ class RoutineStepExecutor(
                 )
             )
             eventLogParameters["taskId"] = taskId
+
+            eventLog.log(
+                RoutineEventLogEntry(
+                    event.instanceId,
+                    event.friendshipId,
+                    RoutineEventType.ACTION_STEP_MESSAGE_SENT,
+                    Instant.now(),
+                    metadata = eventLogParameters
+                )
+            )
+        } else {
+            // Auto-complete steps that don't require confirmation
+            val updatedInstance = instance.copy(
+                progress = instance.progress.copy(
+                    iterations = instance.progress.iterations.let { iterations ->
+                        val current = iterations.first()
+                        val updated = current.copy(
+                            completedSteps = current.completedSteps + Completion(step.id)
+                        )
+                        listOf(updated) + iterations.drop(1)
+                    }
+                )
+            )
+            instanceRepository.save(updatedInstance)
+
+            eventLog.log(
+                RoutineEventLogEntry(
+                    event.instanceId,
+                    event.friendshipId,
+                    RoutineEventType.ACTION_STEP_CONFIRMED,
+                    Instant.now(),
+                    metadata = eventLogParameters
+                )
+            )
+
+            // Publish step completed event for phase completion check
+            eventPublisher.publishEvent(
+                ConfirmedActionStep(
+                    this.javaClass,
+                    event.friendshipId,
+                    event.instanceId,
+                    event.phaseId,
+                    step.id
+                )
+            )
         }
-        eventPublisher.publishEvent(
-            SendMessageCmd(
-                this.javaClass,
-                event.friendshipId,
-                OutgoingTextMessage(Channel.SIGNAL, step.description)
-            )
-        )
-        eventLog.log(
-            RoutineEventLogEntry(
-                event.instanceId,
-                event.friendshipId,
-                RoutineEventType.ACTION_STEP_MESSAGE_SENT,
-                Instant.now(),
-                metadata = eventLogParameters
-            )
-        )
     }
 } 
