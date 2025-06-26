@@ -11,8 +11,16 @@ class RoutinePhaseActivator(
     private val eventPublisher: ApplicationEventPublisher,
     private val eventLog: RoutineEventLog,
     private val routineRepository: RoutineRepository,
+    private val phaseDeactivator: RoutinePhaseDeactivator,
 ) {
     fun activatePhase(oldInstance: RoutineInstance, phase: RoutinePhase) {
+        // If there's a current active phase, deactivate it first
+        oldInstance.currentPhaseId?.let { currentPhaseId ->
+            if (currentPhaseId != phase.id) {
+                phaseDeactivator.deactivatePhase(oldInstance, currentPhaseId)
+            }
+        }
+        
         val updateRoutine = oldInstance.withCurrentPhase(phaseId = phase.id)
         routineRepository.save(updateRoutine)
 
