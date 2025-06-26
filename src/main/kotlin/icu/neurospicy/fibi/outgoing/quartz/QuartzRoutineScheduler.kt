@@ -45,7 +45,7 @@ class QuartzRoutineScheduler(
                 if (condition.reference == null) {
                     ZonedDateTime.now(zoneId).plus(condition.duration)
                 } else {
-                    (result.parameters[condition.reference] as? Instant)?.atZone(zoneId)?.plus(condition.duration)
+                    (result.parameters[condition.reference]?.value as? Instant)?.atZone(zoneId)?.plus(condition.duration)
                         ?: return
                 }
             }
@@ -105,7 +105,7 @@ class QuartzRoutineScheduler(
             }
 
             is TimeOfDayReference -> {
-                val ref = instance.parameters[tod.reference] as? Instant ?: return
+                val ref = instance.parameters[tod.reference]?.value as? Instant ?: return
                 ref.atZone(zoneId)
             }
 
@@ -149,7 +149,7 @@ class QuartzRoutineScheduler(
         )
     }
 
-    override fun schedulePhase(instance: RoutineInstance, phase: RoutinePhase) {
+    override fun schedulePhaseActivation(instance: RoutineInstance, phase: RoutinePhase) {
         val zoneId = friendshipLedger.findTimezoneBy(instance.friendshipId) ?: ZoneId.of("UTC")
         val triggerTime: ZonedDateTime = when (val condition = phase.condition) {
             is AfterDays -> {
@@ -159,7 +159,7 @@ class QuartzRoutineScheduler(
 
             is AfterDuration -> {
                 (condition.reference?.let {
-                    val ref = instance.parameters[condition.reference] as? Instant ?: return
+                    val ref = instance.parameters[condition.reference]?.value as? Instant ?: return
                     ref.atZone(zoneId)
                 } ?: Instant.now().atZone(zoneId)) + condition.duration
             }
@@ -210,17 +210,7 @@ class QuartzRoutineScheduler(
             "routineInstanceId" to instance.instanceId.toString(),
             "phaseId" to phase.id.toString()
         )
-        val cronExpression = when (val expr = phase.schedule.lowercase()) {
-            "daily" -> "0 0 * * *"
-            "monday" -> "0 0 * * MON"
-            "tuesday" -> "0 0 * * TUE"
-            "wednesday" -> "0 0 * * WED"
-            "thursday" -> "0 0 * * THU"
-            "friday" -> "0 0 * * FRI"
-            "saturday" -> "0 0 * * SAT"
-            "sunday" -> "0 0 * * SUN"
-            else -> expr
-        }
+        val cronExpression = phase.schedule.cronExpression
         val jobKeyStr = "routine-phase-iteration-${instance.friendshipId}-${instance.instanceId}-${phase.id}"
         quartzSchedulerService.scheduleJob(
             jobKeyStr,
@@ -243,7 +233,7 @@ class QuartzRoutineScheduler(
                 timestamp = Instant.now(),
                 metadata = mapOf(
                     "phaseId" to phase.id.toString(),
-                    "scheduledAt" to phase.schedule
+                    "scheduledAt" to phase.schedule.cronExpression
                 )
             )
         )
@@ -257,6 +247,26 @@ class QuartzRoutineScheduler(
     ) {
         val jobKeyStr = "routine-step-${friendshipId}-${instanceId}-${phaseId}-${stepId}"
         quartzSchedulerService.deleteJob(jobKeyStr, GROUP_ROUTINE_JOBS_KEY)
+    }
+
+    override fun removePhaseIterationSchedule(
+        friendshipId: FriendshipId,
+        instanceId: RoutineInstanceId,
+        phaseId: RoutinePhaseId,
+    ) {
+        val jobKeyStr = "routine-phase-iteration-${friendshipId}-${instanceId}-${phaseId}"
+        quartzSchedulerService.deleteJob(jobKeyStr, GROUP_ROUTINE_JOBS_KEY)
+        LOG.info("Removed phase iteration schedule for phase {} in routine {}", phaseId, instanceId)
+    }
+
+    override fun removePhaseActivationSchedule(
+        friendshipId: FriendshipId,
+        instanceId: RoutineInstanceId,
+        phaseId: RoutinePhaseId,
+    ) {
+        val jobKeyStr = "routine-phase-${friendshipId}-${instanceId}-${phaseId}"
+        quartzSchedulerService.deleteJob(jobKeyStr, GROUP_ROUTINE_JOBS_KEY)
+        LOG.info("Removed phase activation schedule for phase {} in routine {}", phaseId, instanceId)
     }
 
     companion object {
