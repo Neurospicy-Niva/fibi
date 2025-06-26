@@ -44,6 +44,13 @@ data class RoutinePhaseIterationStarted(
     val phaseId: RoutinePhaseId,
 ) : ApplicationEvent(_source)
 
+data class PhaseIterationCompleted(
+    val _source: Any,
+    val friendshipId: FriendshipId,
+    val instanceId: RoutineInstanceId,
+    val phaseId: RoutinePhaseId,
+) : ApplicationEvent(_source)
+
 data class RoutineStarted(
     val _source: Any,
     val friendshipId: FriendshipId,
@@ -52,6 +59,13 @@ data class RoutineStarted(
 
 data class PhaseActivated(
     val _source: Any,
+    val instanceId: RoutineInstanceId,
+    val phaseId: RoutinePhaseId,
+) : ApplicationEvent(_source)
+
+data class PhaseDeactivated(
+    val _source: Any,
+    val friendshipId: FriendshipId,
     val instanceId: RoutineInstanceId,
     val phaseId: RoutinePhaseId,
 ) : ApplicationEvent(_source)
@@ -87,29 +101,37 @@ data class RoutineStepTriggered(
     val stepId: RoutineStepId,
 ) : ApplicationEvent(_source)
 
-sealed interface RoutineStepCompleted {
+sealed interface CompletedRoutineStep {
     val instanceId: RoutineInstanceId
     val phaseId: RoutinePhaseId
     val stepId: RoutineStepId
     val friendshipId: FriendshipId
 }
 
-data class ActionStepConfirmed(
+data class ConfirmedActionStep(
     val _source: Any,
     override val friendshipId: FriendshipId,
     override val instanceId: RoutineInstanceId,
     override val phaseId: RoutinePhaseId,
     override val stepId: RoutineStepId,
-) : ApplicationEvent(_source), RoutineStepCompleted
+) : ApplicationEvent(_source), CompletedRoutineStep
 
-data class RoutineParameterSet(
+data class SetRoutineParameterRoutineStep(
     val _source: Any,
     override val friendshipId: FriendshipId,
     override val instanceId: RoutineInstanceId,
     override val phaseId: RoutinePhaseId,
     override val stepId: RoutineStepId,
     val parameterKey: String,
-) : ApplicationEvent(_source), RoutineStepCompleted
+) : ApplicationEvent(_source), CompletedRoutineStep
+
+data class SentMessageForRoutineStep(
+    val _source: Any,
+    override val friendshipId: FriendshipId,
+    override val instanceId: RoutineInstanceId,
+    override val phaseId: RoutinePhaseId,
+    override val stepId: RoutineStepId,
+) : ApplicationEvent(_source), CompletedRoutineStep
 
 
 data class UpdatedRoutineSchedulersOnParameterChange(
