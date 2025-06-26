@@ -1,8 +1,8 @@
 package icu.neurospicy.fibi.domain.service.friends.routines
 
-import icu.neurospicy.fibi.domain.service.friends.routines.events.RoutineParameterSet
 import icu.neurospicy.fibi.domain.service.friends.routines.events.RoutinePhaseIterationTriggered
 import icu.neurospicy.fibi.domain.service.friends.routines.events.RoutineStepTriggered
+import icu.neurospicy.fibi.domain.service.friends.routines.events.SetRoutineParameterRoutineStep
 import icu.neurospicy.fibi.domain.service.friends.routines.events.StopRoutineForToday
 import org.slf4j.LoggerFactory
 import org.springframework.context.event.EventListener
@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service
  * Delegates to specialized services for domain-specific concerns.
  */
 @Service
-class RoutineLifecycleService(
+class RoutineLifecycleHandler(
     private val instanceRepository: RoutineRepository,
     private val stepExecutor: RoutineStepExecutor,
     private val routinePhaseService: RoutinePhaseService,
@@ -40,7 +40,7 @@ class RoutineLifecycleService(
 
     @EventListener
     @Async
-    fun onRoutineParameterSet(event: RoutineParameterSet) {
+    fun onRoutineParameterSet(event: SetRoutineParameterRoutineStep) {
         parameterSetHandler.handleRoutineParameterSet(event)
     }
 
