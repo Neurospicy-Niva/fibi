@@ -1,6 +1,6 @@
 package icu.neurospicy.fibi.domain.service.friends.routines
 
-import icu.neurospicy.fibi.domain.service.friends.routines.events.RoutineParameterSet
+import icu.neurospicy.fibi.domain.service.friends.routines.events.SetRoutineParameterRoutineStep
 import icu.neurospicy.fibi.domain.service.friends.routines.events.UpdatedRoutineSchedulersOnParameterChange
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
@@ -10,9 +10,9 @@ class RoutineParameterSetHandler(
     private val instanceRepository: RoutineRepository,
     private val templateRepository: RoutineTemplateRepository,
     private val routineScheduler: RoutineScheduler,
-    private val eventPublisher: ApplicationEventPublisher
+    private val eventPublisher: ApplicationEventPublisher,
 ) {
-    fun handleRoutineParameterSet(event: RoutineParameterSet) {
+    fun handleRoutineParameterSet(event: SetRoutineParameterRoutineStep) {
         val instance = instanceRepository.findById(event.friendshipId, event.instanceId) ?: return
         val template = templateRepository.findById(instance.templateId) ?: return
         val parameterKey = event.parameterKey

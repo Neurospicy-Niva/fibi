@@ -120,6 +120,10 @@ class RoutinePhaseService(
         eventPublisher.publishEvent(StoppedTodaysRoutine(this.javaClass, instance.friendshipId, instance.instanceId))
     }
 
+    fun conditionFulfilled(instance: RoutineInstance, phase: RoutinePhase) {
+        phaseActivator.activatePhase(instance, phase)
+    }
+
     companion object {
         val LOG = LoggerFactory.getLogger(this::class.java)
     }

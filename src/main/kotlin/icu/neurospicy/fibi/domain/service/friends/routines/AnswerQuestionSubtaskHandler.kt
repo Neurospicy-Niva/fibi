@@ -3,7 +3,7 @@ package icu.neurospicy.fibi.domain.service.friends.routines
 import icu.neurospicy.fibi.domain.model.FriendshipId
 import icu.neurospicy.fibi.domain.model.UserMessage
 import icu.neurospicy.fibi.domain.service.friends.interaction.*
-import icu.neurospicy.fibi.domain.service.friends.routines.events.RoutineParameterSet
+import icu.neurospicy.fibi.domain.service.friends.routines.events.SetRoutineParameterRoutineStep
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Component
 import java.time.Instant
@@ -81,7 +81,7 @@ class AnswerQuestionSubtaskHandler(
             )
         )
         eventPublisher.publishEvent(
-            RoutineParameterSet(
+            SetRoutineParameterRoutineStep(
                 this.javaClass,
                 friendshipId,
                 instance.instanceId,
