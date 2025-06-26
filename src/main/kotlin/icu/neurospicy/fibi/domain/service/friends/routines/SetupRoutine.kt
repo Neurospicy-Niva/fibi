@@ -31,7 +31,7 @@ class SetupRoutine(
             _id = UUID.randomUUID().toString(),
             templateId = routineTemplateId,
             friendshipId = friendshipId,
-            parameters = parameters.toMutableMap(),
+            parameters = parameters.mapValues { TypedParameter.fromValue(it.value) },
             currentPhaseId = firstPhase.id
         )
 

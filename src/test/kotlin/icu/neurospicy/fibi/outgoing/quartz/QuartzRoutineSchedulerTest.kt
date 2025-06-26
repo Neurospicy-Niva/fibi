@@ -5,6 +5,7 @@ import icu.neurospicy.fibi.application.routine.RoutineTriggerSchedulerJob
 import icu.neurospicy.fibi.domain.model.FriendshipId
 import icu.neurospicy.fibi.domain.repository.FriendshipLedger
 import icu.neurospicy.fibi.domain.service.friends.routines.*
+import icu.neurospicy.fibi.domain.service.friends.routines.builders.aMessageStep
 import icu.neurospicy.fibi.domain.service.friends.routines.events.RoutineStepScheduled
 import icu.neurospicy.fibi.domain.service.friends.routines.events.RoutineTriggerScheduled
 import io.mockk.*
@@ -74,7 +75,7 @@ class QuartzRoutineSchedulerTest {
             val referenceKey = "someTime"
             val duration = Duration.ofMinutes(45)
 
-            val instance = instanceWith(friendshipId).copy(parameters = mutableMapOf(referenceKey to now))
+            val instance = instanceWith(friendshipId).copy(parameters = mutableMapOf(referenceKey to TypedParameter.fromValue(now)))
 
             val trigger = RoutineTrigger(
                 condition = AfterDuration(reference = referenceKey, duration = duration),
@@ -178,7 +179,7 @@ class QuartzRoutineSchedulerTest {
             every { friendshipLedger.findTimezoneBy(friendshipId) } returns zoneId
 
             val wakeUpTime = Instant.now().plusSeconds(3600)
-            val instance = instanceWith(friendshipId).copy(parameters = mutableMapOf("wakeUpTime" to wakeUpTime))
+            val instance = instanceWith(friendshipId).copy(parameters = mutableMapOf("wakeUpTime" to TypedParameter.fromValue(wakeUpTime)))
             val phaseId = RoutinePhaseId.forTitle("phase1")
             val step = ActionRoutineStep(
                 message = "Wake up and stretch", timeOfDay = TimeOfDayReference("wakeUpTime")
@@ -278,7 +279,8 @@ class QuartzRoutineSchedulerTest {
             val wakeUpTime = Instant.now().plusSeconds(1200)
             val instance = instanceWith(
                 friendshipId, mutableMapOf(
-                    "wakeUpTime" to wakeUpTime, "specialMorningActivity" to specialActivity
+                    "wakeUpTime" to TypedParameter.fromValue(wakeUpTime), 
+                    "specialMorningActivity" to TypedParameter.fromValue(specialActivity)
                 )
             )
             val phaseId = RoutinePhaseId.forTitle("phase1")
@@ -333,16 +335,16 @@ class QuartzRoutineSchedulerTest {
     }
 
     @Nested
-    inner class `PhaseScheduler schedulePhase` {
+    inner class `PhaseScheduler schedulePhaseActivation` {
         @Test
         fun `schedules Phase after days`() {
             val friendshipId = FriendshipId()
             val zoneId = ZoneId.of("Asia/Tokyo")
-            val phase = RoutinePhase(title = "Breakfast", condition = AfterDays(3), steps = emptyList())
+            val phase = RoutinePhase(title = "Breakfast", condition = AfterDays(3), steps = listOf(aMessageStep()))
             justRun { quartzSchedulerService.scheduleJob(any(), any(), any(), any(), any(), any()) }
             every { friendshipLedger.findTimezoneBy(friendshipId) } returns zoneId
             // Act
-            scheduler.schedulePhase(
+            scheduler.schedulePhaseActivation(
                 instanceWith(friendshipId), phase
             )
             verify {
@@ -360,12 +362,12 @@ class QuartzRoutineSchedulerTest {
             val friendshipId = FriendshipId()
             val zoneId = ZoneId.of("Asia/Tokyo")
             val phase = RoutinePhase(
-                title = "Breakfast", condition = AfterDuration(duration = Duration.ofHours(5)), steps = emptyList()
+                title = "Breakfast", condition = AfterDuration(duration = Duration.ofHours(5)), steps = listOf(aMessageStep())
             )
             justRun { quartzSchedulerService.scheduleJob(any(), any(), any(), any(), any(), any()) }
             every { friendshipLedger.findTimezoneBy(friendshipId) } returns zoneId
             // Act
-            scheduler.schedulePhase(
+            scheduler.schedulePhaseActivation(
                 instanceWith(friendshipId), phase
             )
             verify {
@@ -384,14 +386,14 @@ class QuartzRoutineSchedulerTest {
             val phase = RoutinePhase(
                 title = "Breakfast",
                 condition = AfterDuration(reference = "whenToStart", duration = Duration.ofHours(5)),
-                steps = emptyList()
+                steps = listOf(aMessageStep())
             )
             val whenToStart = LocalDate.now().plusWeeks(1).atTime(LocalTime.of(6, 30)).atZone(zoneId).toInstant()
-            val parameters = mapOf("whenToStart" to whenToStart)
+            val parameters = mapOf("whenToStart" to TypedParameter.fromValue(whenToStart))
             justRun { quartzSchedulerService.scheduleJob(any(), any(), any(), any(), any(), any()) }
             every { friendshipLedger.findTimezoneBy(friendshipId) } returns zoneId
             // Act
-            scheduler.schedulePhase(
+            scheduler.schedulePhaseActivation(
                 instanceWith(friendshipId).copy(parameters = parameters), phase
             )
             verify {
@@ -409,12 +411,12 @@ class QuartzRoutineSchedulerTest {
             val phase = RoutinePhase(
                 title = "Breakfast",
                 condition = AfterEvent(eventType = RoutineAnchorEvent.ROUTINE_STARTED, duration = Duration.ofHours(5)),
-                steps = emptyList()
+                steps = listOf(aMessageStep())
             )
             justRun { quartzSchedulerService.scheduleJob(any(), any(), any(), any(), any(), any()) }
             every { friendshipLedger.findTimezoneBy(friendshipId) } returns ZoneId.of("Asia/Tokyo")
             // Act
-            scheduler.schedulePhase(
+            scheduler.schedulePhaseActivation(
                 instanceWith(friendshipId), phase
             )
             verify {
@@ -433,9 +435,9 @@ class QuartzRoutineSchedulerTest {
             val phase = RoutinePhase(
                 title = "Breakfast",
                 condition = AfterDuration(reference = "whenToStart", duration = Duration.ofHours(5)),
-                steps = emptyList()
+                steps = listOf(aMessageStep())
             )
-            val parameters = emptyMap<String, Any>()
+            val parameters = emptyMap<String, TypedParameter>()
             justRun {
                 quartzSchedulerService.scheduleJob(
                     match { it.contains("phase") }, any(), any(), any(), any(), any()
@@ -443,7 +445,7 @@ class QuartzRoutineSchedulerTest {
             }
             every { friendshipLedger.findTimezoneBy(friendshipId) } returns zoneId
             // Act
-            scheduler.schedulePhase(
+            scheduler.schedulePhaseActivation(
                 instanceWith(friendshipId).copy(parameters = parameters), phase
             )
             verify { quartzSchedulerService wasNot Called }
@@ -456,7 +458,7 @@ class QuartzRoutineSchedulerTest {
         fun `schedules phase with cron`() {
             val friendshipId = FriendshipId()
             val phase = RoutinePhase(
-                title = "Breakfast", steps = listOf(MessageRoutineStep("Eat your breakfast")), schedule = "0 0 * * *"
+                title = "Breakfast", steps = listOf(MessageRoutineStep("Eat your breakfast")), schedule = ScheduleExpression.Custom("0 0 * * *")
             )
             val instance = instanceWith(friendshipId)
             //Act
@@ -472,7 +474,7 @@ class QuartzRoutineSchedulerTest {
         fun `schedules daily phase`() {
             val friendshipId = FriendshipId()
             val phase = RoutinePhase(
-                title = "Breakfast", steps = listOf(MessageRoutineStep("Eat your breakfast")), schedule = "DAILY"
+                title = "Breakfast", steps = listOf(MessageRoutineStep("Eat your breakfast")), schedule = ScheduleExpression.DAILY
             )
             val instance = instanceWith(friendshipId)
             //Act
@@ -488,7 +490,7 @@ class QuartzRoutineSchedulerTest {
         fun `schedules weekday phase`() {
             val friendshipId = FriendshipId()
             val phase = RoutinePhase(
-                title = "Breakfast", steps = listOf(MessageRoutineStep("Eat your breakfast")), schedule = "WEDNESDAY"
+                title = "Breakfast", steps = listOf(MessageRoutineStep("Eat your breakfast")), schedule = ScheduleExpression.WEDNESDAY
             )
             val instance = instanceWith(friendshipId)
             //Act
@@ -522,7 +524,44 @@ class QuartzRoutineSchedulerTest {
         }
     }
 
-    private fun instanceWith(friendshipId: FriendshipId, parameters: Map<String, Any> = emptyMap()): RoutineInstance {
+    @Nested
+    inner class RemovePhaseActivationSchedulers {
+        @Test
+        fun `remove phase iteration scheduler deletes correct job`() {
+            val friendshipId = FriendshipId()
+            val instanceId = RoutineInstanceId.forInstance(RoutineTemplateId.forTitleVersion("Morning", "1.0"), friendshipId)
+            val phaseId = RoutinePhaseId.forTitle("Breakfast")
+            justRun { quartzSchedulerService.deleteJob(any(), any()) }
+            
+            scheduler.removePhaseIterationSchedule(friendshipId, instanceId, phaseId)
+            
+            verify {
+                quartzSchedulerService.deleteJob(
+                    "routine-phase-iteration-${friendshipId}-${instanceId}-${phaseId}",
+                    any()
+                )
+            }
+        }
+
+        @Test
+        fun `remove phase activation scheduler deletes correct job`() {
+            val friendshipId = FriendshipId()
+            val instanceId = RoutineInstanceId.forInstance(RoutineTemplateId.forTitleVersion("Morning", "1.0"), friendshipId)
+            val phaseId = RoutinePhaseId.forTitle("Breakfast")
+            justRun { quartzSchedulerService.deleteJob(any(), any()) }
+            
+            scheduler.removePhaseActivationSchedule(friendshipId, instanceId, phaseId)
+            
+            verify {
+                quartzSchedulerService.deleteJob(
+                    "routine-phase-${friendshipId}-${instanceId}-${phaseId}",
+                    any()
+                )
+            }
+        }
+    }
+
+    private fun instanceWith(friendshipId: FriendshipId, parameters: Map<String, TypedParameter> = emptyMap()): RoutineInstance {
         return RoutineInstance(
             _id = UUID.randomUUID().toString(),
             templateId = RoutineTemplateId.forTitleVersion("Morning routine", "1.0"),

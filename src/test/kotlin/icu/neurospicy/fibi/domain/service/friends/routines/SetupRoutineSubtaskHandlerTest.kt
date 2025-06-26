@@ -7,6 +7,7 @@ import icu.neurospicy.fibi.domain.model.UserMessage
 import icu.neurospicy.fibi.domain.service.friends.interaction.*
 import icu.neurospicy.fibi.domain.service.friends.routines.builders.aParameterRequestStep
 import icu.neurospicy.fibi.domain.service.friends.routines.builders.aRoutineTemplate
+import icu.neurospicy.fibi.domain.service.friends.routines.builders.aMessageStep
 import icu.neurospicy.fibi.domain.service.friends.routines.builders.aRoutineInstance
 import icu.neurospicy.fibi.outgoing.ollama.ExtractionException
 import io.mockk.coEvery
@@ -190,7 +191,7 @@ class RoutineTemplateBuilder {
     var phases: List<RoutinePhase> = listOf(
         RoutinePhase(
             title = "Test Phase",
-            steps = emptyList()
+            steps = listOf(aMessageStep())
         )
     )
 

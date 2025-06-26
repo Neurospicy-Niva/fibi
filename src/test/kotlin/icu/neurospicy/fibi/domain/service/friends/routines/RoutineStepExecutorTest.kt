@@ -7,6 +7,7 @@ import icu.neurospicy.fibi.domain.repository.TaskRepository
 import icu.neurospicy.fibi.domain.service.friends.interaction.GoalContextRepository
 import icu.neurospicy.fibi.domain.service.friends.routines.builders.*
 import icu.neurospicy.fibi.domain.service.friends.routines.events.RoutineStepTriggered
+import icu.neurospicy.fibi.domain.service.friends.routines.events.SentMessageForRoutineStep
 import io.mockk.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import org.assertj.core.api.Assertions.assertThat
@@ -82,20 +83,17 @@ class RoutineStepExecutorTest {
                 assertThat(it.metadata["phaseId"]).isEqualTo(phase.id)
                 assertThat(it.metadata["stepId"]).isEqualTo(step.id)
             })
-        }
-        coVerify {
             taskRepository.save(match {
                 it.title == step.description && it.owner == friendshipId
             })
-        }
-        coVerify {
             instanceRepository.save(match {
                 it.concepts.any { concept -> concept.linkedEntityId == taskId && concept.linkedStep == step.id && concept is TaskRoutineConcept } && it.friendshipId == friendshipId
             })
         }
-        coVerify {
+        verify {
             eventPublisher.publishEvent(match {
-                it is SendMessageCmd && it.friendshipId == friendshipId && it.outgoingMessage is OutgoingTextMessage && it.outgoingMessage.text.contains(
+                it is SendMessageCmd &&
+                        it.friendshipId == friendshipId && it.outgoingMessage is OutgoingTextMessage && it.outgoingMessage.text.contains(
                     step.description
                 )
             })
@@ -215,6 +213,10 @@ class RoutineStepExecutorTest {
                     message
                 )
             })
+            eventPublisher.publishEvent(match {
+                it is SentMessageForRoutineStep &&
+                        it.friendshipId == friendshipId && it.instanceId == instance.instanceId && it.phaseId == phase.id && it.stepId == step.id
+            })
         }
     }
 
@@ -278,7 +280,7 @@ class RoutineStepExecutorTest {
     }
 
     @Test
-    fun `action step without confirmation sends message and logs only`() {
+    fun `action step without confirmation sends message, logs and updates progress`() {
         val friendshipId = FriendshipId("friend-5")
         val template = RoutineTemplate(
             _id = "template-5",
@@ -309,6 +311,7 @@ class RoutineStepExecutorTest {
         )
         coEvery { instanceRepository.findById(friendshipId, instance.instanceId) } returns instance
         coEvery { templateRepository.findById(template.templateId) } returns template
+        justRun { instanceRepository.save(any()) }
 
         val event = RoutineStepTriggered(
             _source = this.javaClass,
@@ -320,14 +323,19 @@ class RoutineStepExecutorTest {
         stepExecutor.executeStep(event)
 
         coVerify {
+            eventLog.log(withArg {
+                assertThat(it.event).isEqualTo(RoutineEventType.ACTION_STEP_CONFIRMED)
+                assertThat(it.metadata["stepId"]).isEqualTo(step.id)
+            })
+            instanceRepository.save(match {
+                it.progress.iterations.first().completedSteps.any { it.id == step.id }
+            })
+        }
+        verify {
             eventPublisher.publishEvent(match {
                 it is SendMessageCmd && it.friendshipId == friendshipId && it.outgoingMessage is OutgoingTextMessage && it.outgoingMessage.text.contains(
                     step.description
                 )
-            })
-            eventLog.log(withArg {
-                assertThat(it.event).isEqualTo(RoutineEventType.ACTION_STEP_MESSAGE_SENT)
-                assertThat(it.metadata["stepId"]).isEqualTo(step.id)
             })
         }
     }

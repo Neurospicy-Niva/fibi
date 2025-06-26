@@ -5,7 +5,7 @@ import icu.neurospicy.fibi.domain.service.friends.interaction.ExtractParamFromCo
 import icu.neurospicy.fibi.domain.service.friends.interaction.ExtractParamResult
 import icu.neurospicy.fibi.domain.service.friends.interaction.Subtask
 import icu.neurospicy.fibi.domain.service.friends.interaction.SubtaskId
-import icu.neurospicy.fibi.domain.service.friends.routines.events.RoutineParameterSet
+import icu.neurospicy.fibi.domain.service.friends.routines.events.SetRoutineParameterRoutineStep
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -75,7 +75,7 @@ class AnswerQuestionSubtaskHandlerTest {
         assertThat(clarificationResult).extracting { it.updatedSubtask.completed() }.isEqualTo(true)
         verify {
             eventPublisher.publishEvent(
-                match { it is RoutineParameterSet && it.friendshipId == friendshipId && it.instanceId == routineInstance.instanceId && it.phaseId == routineInstance.currentPhaseId && it.stepId == stepWithQuestion.id && it.parameterKey == stepWithQuestion.parameterKey })
+                match { it is SetRoutineParameterRoutineStep && it.friendshipId == friendshipId && it.instanceId == routineInstance.instanceId && it.phaseId == routineInstance.currentPhaseId && it.stepId == stepWithQuestion.id && it.parameterKey == stepWithQuestion.parameterKey })
         }
     }
 

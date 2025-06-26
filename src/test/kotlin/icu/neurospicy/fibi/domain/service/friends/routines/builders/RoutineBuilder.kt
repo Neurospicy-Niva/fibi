@@ -45,7 +45,7 @@ class RoutineInstanceBuilder {
     var friendshipId: FriendshipId = FriendshipId()
     var template: RoutineTemplate = aRoutineTemplate()
     var currentPhaseId: RoutinePhaseId? = template.phases.first().id
-    var parameters: Map<String, Any> = emptyMap()
+    var parameters: Map<String, TypedParameter> = emptyMap()
     var progress: RoutineProgress = RoutineProgress(
         if (currentPhaseId != null) listOf(PhaseIterationProgress(currentPhaseId!!, Instant.now())) else emptyList()
     )

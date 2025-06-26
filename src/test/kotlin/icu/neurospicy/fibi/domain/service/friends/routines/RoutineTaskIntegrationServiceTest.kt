@@ -9,7 +9,11 @@ import icu.neurospicy.fibi.domain.repository.ChatRepository
 import icu.neurospicy.fibi.domain.service.friends.communication.*
 import icu.neurospicy.fibi.domain.service.friends.interaction.GoalContext
 import icu.neurospicy.fibi.domain.service.friends.interaction.GoalContextRepository
-import icu.neurospicy.fibi.domain.service.friends.routines.events.ActionStepConfirmed
+import icu.neurospicy.fibi.domain.service.friends.routines.RoutineTaskIntegrationService.Companion.DID_USER_INTEND_TO_STOP_ROUTINE_QUESTION
+import icu.neurospicy.fibi.domain.service.friends.routines.RoutineTaskIntegrationService.Companion.IS_STOPPING_ROUTINE_HELPFUL_DUE_TO_OVERWHELM_QUESTION
+import icu.neurospicy.fibi.domain.service.friends.routines.RoutineTaskIntegrationService.Companion.IS_USER_STRESSED_QUESTION
+import icu.neurospicy.fibi.domain.service.friends.routines.RoutineTaskIntegrationService.Companion.WAS_DELETION_OF_TASK_A_MISTAKE_QUESTION
+import icu.neurospicy.fibi.domain.service.friends.routines.events.ConfirmedActionStep
 import io.mockk.*
 import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
@@ -20,7 +24,7 @@ import java.time.Instant
 import java.time.LocalTime
 import java.util.*
 
-class RoutineTaskHandlerTest {
+class RoutineTaskIntegrationServiceTest {
     private val instanceRepository: RoutineRepository = mockk()
     private val templateRepository: RoutineTemplateRepository = mockk()
     private val eventPublisher: ApplicationEventPublisher = mockk(relaxed = true)
@@ -29,11 +33,11 @@ class RoutineTaskHandlerTest {
     private val chatRepository: ChatRepository = mockk()
     private val goalContextRepository: GoalContextRepository = mockk()
 
-    private lateinit var handler: RoutineTaskHandler
+    private lateinit var handler: RoutineTaskIntegrationService
 
     @BeforeEach
     fun setup() {
-        handler = RoutineTaskHandler(
+        handler = RoutineTaskIntegrationService(
             instanceRepository = instanceRepository,
             templateRepository = templateRepository,
             eventPublisher = eventPublisher,
@@ -81,7 +85,7 @@ class RoutineTaskHandlerTest {
                     assertThat(c.id).isEqualTo(actionRoutineStep.id)
                 }
             })
-            eventPublisher.publishEvent(match<ActionStepConfirmed> {
+            eventPublisher.publishEvent(match<ConfirmedActionStep> {
                 it.friendshipId == friendshipId && it.instanceId == instance.instanceId && it.phaseId == phase.id && it.stepId == actionRoutineStep.id
             })
             eventLog.log(match {
@@ -181,12 +185,12 @@ class RoutineTaskHandlerTest {
             template = template,
             analysisResult = FriendStateAnalysisResult(
                 emotions = listOf(MoodEstimate(Mood.Neutral, 0.5f)), answers = listOf(
-                    YesOrNoQuestionToAnswer(didUserIntendToStopRoutineQuestion, false),
-                    YesOrNoQuestionToAnswer(isUserStressedQuestion, false),
+                    YesOrNoQuestionToAnswer(DID_USER_INTEND_TO_STOP_ROUTINE_QUESTION, false),
+                    YesOrNoQuestionToAnswer(IS_USER_STRESSED_QUESTION, false),
                     YesOrNoQuestionToAnswer(
-                        wasDeletionOfTaskAMistakeQuestion.replace("\$taskTitle", task.title), false
+                        WAS_DELETION_OF_TASK_A_MISTAKE_QUESTION.replace("\$taskTitle", task.title), false
                     ),
-                    YesOrNoQuestionToAnswer(isStoppingRoutineHelpfulDueToOverwhelmQuestion, true),
+                    YesOrNoQuestionToAnswer(IS_STOPPING_ROUTINE_HELPFUL_DUE_TO_OVERWHELM_QUESTION, true),
                 )
             ),
             expectedMessageContains = "pausing the routine now seems helpful"
@@ -208,12 +212,12 @@ class RoutineTaskHandlerTest {
             template = template,
             analysisResult = FriendStateAnalysisResult(
                 emotions = listOf(MoodEstimate(Mood.Stressed, 0.9f)), answers = listOf(
-                    YesOrNoQuestionToAnswer(didUserIntendToStopRoutineQuestion, false),
-                    YesOrNoQuestionToAnswer(isUserStressedQuestion, true),
+                    YesOrNoQuestionToAnswer(DID_USER_INTEND_TO_STOP_ROUTINE_QUESTION, false),
+                    YesOrNoQuestionToAnswer(IS_USER_STRESSED_QUESTION, true),
                     YesOrNoQuestionToAnswer(
-                        wasDeletionOfTaskAMistakeQuestion.replace("\$taskTitle", task.title), false
+                        WAS_DELETION_OF_TASK_A_MISTAKE_QUESTION.replace("\$taskTitle", task.title), false
                     ),
-                    YesOrNoQuestionToAnswer(isStoppingRoutineHelpfulDueToOverwhelmQuestion, false),
+                    YesOrNoQuestionToAnswer(IS_STOPPING_ROUTINE_HELPFUL_DUE_TO_OVERWHELM_QUESTION, false),
                 )
             ),
             expectedMessageContains = "seem to be overwhelmed or emotionally burdened"
@@ -233,12 +237,12 @@ class RoutineTaskHandlerTest {
         runOnTaskRemovedTest(
             task = task, instance = instance, template = template, analysisResult = FriendStateAnalysisResult(
                 emotions = listOf(MoodEstimate(Mood.Neutral, 0.5f)), answers = listOf(
-                    YesOrNoQuestionToAnswer(didUserIntendToStopRoutineQuestion, false),
-                    YesOrNoQuestionToAnswer(isUserStressedQuestion, false),
+                    YesOrNoQuestionToAnswer(DID_USER_INTEND_TO_STOP_ROUTINE_QUESTION, false),
+                    YesOrNoQuestionToAnswer(IS_USER_STRESSED_QUESTION, false),
                     YesOrNoQuestionToAnswer(
-                        wasDeletionOfTaskAMistakeQuestion.replace("\$taskTitle", task.title), true
+                        WAS_DELETION_OF_TASK_A_MISTAKE_QUESTION.replace("\$taskTitle", task.title), true
                     ),
-                    YesOrNoQuestionToAnswer(isStoppingRoutineHelpfulDueToOverwhelmQuestion, false),
+                    YesOrNoQuestionToAnswer(IS_STOPPING_ROUTINE_HELPFUL_DUE_TO_OVERWHELM_QUESTION, false),
                 )
             ), expectedMessageContains = "the task has been deleted by mistake.", expectedGoalContextCheck = {
                 assertThat(goal!!.intent).isEqualTo(RoutineIntents.StopRoutineToday)
@@ -260,12 +264,12 @@ class RoutineTaskHandlerTest {
         runOnTaskRemovedTest(
             task = task, instance = instance, template = template, analysisResult = FriendStateAnalysisResult(
                 emotions = listOf(MoodEstimate(Mood.Neutral, 0.5f)), answers = listOf(
-                    YesOrNoQuestionToAnswer(didUserIntendToStopRoutineQuestion, true),
-                    YesOrNoQuestionToAnswer(isUserStressedQuestion, false),
+                    YesOrNoQuestionToAnswer(DID_USER_INTEND_TO_STOP_ROUTINE_QUESTION, true),
+                    YesOrNoQuestionToAnswer(IS_USER_STRESSED_QUESTION, false),
                     YesOrNoQuestionToAnswer(
-                        wasDeletionOfTaskAMistakeQuestion.replace("\$taskTitle", task.title), false
+                        WAS_DELETION_OF_TASK_A_MISTAKE_QUESTION.replace("\$taskTitle", task.title), false
                     ),
-                    YesOrNoQuestionToAnswer(isStoppingRoutineHelpfulDueToOverwhelmQuestion, false),
+                    YesOrNoQuestionToAnswer(IS_STOPPING_ROUTINE_HELPFUL_DUE_TO_OVERWHELM_QUESTION, false),
                 )
             ), expectedMessageContains = "they explicitly intended to stop the routine", expectedGoalContextCheck = {
                 assertThat(goal!!.intent).isEqualTo(RoutineIntents.StopRoutineToday)
@@ -297,12 +301,12 @@ class RoutineTaskHandlerTest {
             template = template,
             analysisResult = FriendStateAnalysisResult(
                 emotions = listOf(MoodEstimate(Mood.Calm, 0.5f)), answers = listOf(
-                    YesOrNoQuestionToAnswer(didUserIntendToStopRoutineQuestion, false),
-                    YesOrNoQuestionToAnswer(isUserStressedQuestion, false),
+                    YesOrNoQuestionToAnswer(DID_USER_INTEND_TO_STOP_ROUTINE_QUESTION, false),
+                    YesOrNoQuestionToAnswer(IS_USER_STRESSED_QUESTION, false),
                     YesOrNoQuestionToAnswer(
-                        wasDeletionOfTaskAMistakeQuestion.replace("\$taskTitle", task.title), false
+                        WAS_DELETION_OF_TASK_A_MISTAKE_QUESTION.replace("\$taskTitle", task.title), false
                     ),
-                    YesOrNoQuestionToAnswer(isStoppingRoutineHelpfulDueToOverwhelmQuestion, false),
+                    YesOrNoQuestionToAnswer(IS_STOPPING_ROUTINE_HELPFUL_DUE_TO_OVERWHELM_QUESTION, false),
                 )
             ),
             expectedMessageContains = "The friend might not know about the connection to the routine",
@@ -414,7 +418,7 @@ class RoutineTaskHandlerTest {
         description = "Start your day",
         phases = listOf(
             RoutinePhase(
-                title = "Easy breakfast", condition = AfterDays(0), steps = steps
+                title = "Easy breakfast", condition = AfterDays(1), steps = steps
             )
         )
     )
