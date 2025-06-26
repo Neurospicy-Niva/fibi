@@ -62,7 +62,7 @@ class SetupRoutineTest {
         //then
         assertEquals(routineTemplateId, result.templateId)
         assertEquals(friendshipId, result.friendshipId)
-        assertEquals(parameterWakeUpTime, result.parameters["wakeUpTime"])
+        assertEquals(parameterWakeUpTime, result.parameters["wakeUpTime"]?.value)
         assertTrue(result.progress.iterations.first().completedSteps.isEmpty())
         verify { mockRoutineRepository.save(result) }
         verify { eventPublisher.publishEvent(match { it is RoutineStarted && it.instanceId == result.instanceId }) }
@@ -143,7 +143,7 @@ class SetupRoutineTest {
     private fun templateWith(
         routineTemplateId: RoutineTemplateId,
         phase: RoutinePhase = RoutinePhase(
-            title = "Start", condition = AfterDays(1), steps = listOf()
+            title = "Start", condition = AfterDays(1), steps = listOf(MessageRoutineStep("Default step"))
         ),
         setupSteps: List<RoutineStep> = emptyList(),
         trigger: RoutineTrigger? = null,
@@ -195,7 +195,7 @@ class SetupRoutineTest {
             ),
             phases = listOf(
                 RoutinePhase(
-                    title = "Start", condition = AfterDays(1), steps = listOf()
+                    title = "Start", condition = AfterDays(1), steps = listOf(MessageRoutineStep("Default step"))
                 )
             )
         )

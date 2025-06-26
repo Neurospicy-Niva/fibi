@@ -1,6 +1,6 @@
 package icu.neurospicy.fibi.domain.service.friends.routines
 
-import icu.neurospicy.fibi.domain.service.friends.routines.events.RoutineParameterSet
+import icu.neurospicy.fibi.domain.service.friends.routines.events.SetRoutineParameterRoutineStep
 import icu.neurospicy.fibi.domain.service.friends.routines.events.UpdatedRoutineSchedulersOnParameterChange
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
@@ -10,9 +10,9 @@ class RoutineParameterSetHandler(
     private val instanceRepository: RoutineRepository,
     private val templateRepository: RoutineTemplateRepository,
     private val routineScheduler: RoutineScheduler,
-    private val eventPublisher: ApplicationEventPublisher
+    private val eventPublisher: ApplicationEventPublisher,
 ) {
-    fun handleRoutineParameterSet(event: RoutineParameterSet) {
+    fun handleRoutineParameterSet(event: SetRoutineParameterRoutineStep) {
         val instance = instanceRepository.findById(event.friendshipId, event.instanceId) ?: return
         val template = templateRepository.findById(instance.templateId) ?: return
         val parameterKey = event.parameterKey
@@ -31,7 +31,7 @@ class RoutineParameterSetHandler(
         }
 
         // Reschedule steps only if there is an active iteration
-        val affectedSteps = instance.progress.iterations.firstOrNull()?.let { currentIteration ->
+        val affectedSteps = instance.progress.getCurrentIteration()?.let { currentIteration ->
             val completedStepIds = currentIteration.completedSteps.map { it.id }.toSet()
             template.phases.flatMap { phase ->
                 phase.steps.filter { step ->
@@ -43,8 +43,8 @@ class RoutineParameterSetHandler(
         } ?: emptyList()
 
         affectedSteps.forEach { (phaseId, stepId) ->
-            val phase = template.phases.find { it.id == phaseId } ?: return@forEach
-            val step = phase.steps.find { it.id == stepId } ?: return@forEach
+            val phase = template.findPhase(phaseId) ?: return@forEach
+            val step = phase.findStep(stepId) ?: return@forEach
             routineScheduler.scheduleStep(instance, step, phaseId)
         }
 

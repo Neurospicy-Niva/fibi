@@ -1,11 +1,10 @@
 package icu.neurospicy.fibi.domain.service.friends.routines
 
-import icu.neurospicy.fibi.domain.model.FriendshipId
 import icu.neurospicy.fibi.domain.service.friends.routines.builders.aParameterRequestStep
 import icu.neurospicy.fibi.domain.service.friends.routines.builders.aRoutineInstance
 import icu.neurospicy.fibi.domain.service.friends.routines.builders.aRoutinePhase
 import icu.neurospicy.fibi.domain.service.friends.routines.builders.aRoutineTemplate
-import icu.neurospicy.fibi.domain.service.friends.routines.events.RoutineParameterSet
+import icu.neurospicy.fibi.domain.service.friends.routines.events.SetRoutineParameterRoutineStep
 import icu.neurospicy.fibi.domain.service.friends.routines.events.UpdatedRoutineSchedulersOnParameterChange
 import io.mockk.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -64,8 +63,8 @@ class RoutineParameterSetHandlerTest {
         every { instanceRepository.findById(instance.friendshipId, instance.instanceId) } returns instance
         every { templateRepository.findById(template.templateId) } returns template
 
-        val event = RoutineParameterSet(
-            RoutineLifecycleService::class.java,
+        val event = SetRoutineParameterRoutineStep(
+            RoutineLifecycleHandler::class.java,
             instance.friendshipId,
             instance.instanceId,
             instance.currentPhaseId!!,
@@ -120,8 +119,8 @@ class RoutineParameterSetHandlerTest {
         every { instanceRepository.findById(instance.friendshipId, instance.instanceId) } returns instance
         every { templateRepository.findById(template.templateId) } returns template
 
-        val event = RoutineParameterSet(
-            RoutineLifecycleService::class.java,
+        val event = SetRoutineParameterRoutineStep(
+            RoutineLifecycleHandler::class.java,
             instance.friendshipId,
             instance.instanceId,
             instance.currentPhaseId!!,
@@ -139,7 +138,9 @@ class RoutineParameterSetHandlerTest {
     fun `handleRoutineParameterSet reschedules triggers when no phase is active`() {
         val parameterKey = "testParameter"
         val template = aRoutineTemplate {
-            this.phases = listOf(aRoutinePhase { steps = emptyList() })
+            this.phases = listOf(aRoutinePhase { 
+                steps = listOf(aParameterRequestStep { this.parameterKey = "dummyParam" })
+            })
             this.triggers = listOf(
                 RoutineTrigger(
                     condition = AfterDuration(parameterKey, Duration.ofMinutes(2)),
@@ -156,8 +157,8 @@ class RoutineParameterSetHandlerTest {
         every { instanceRepository.findById(instance.friendshipId, instance.instanceId) } returns instance
         every { templateRepository.findById(template.templateId) } returns template
 
-        val event = RoutineParameterSet(
-            RoutineLifecycleService::class.java,
+        val event = SetRoutineParameterRoutineStep(
+            RoutineLifecycleHandler::class.java,
             instance.friendshipId,
             instance.instanceId,
             RoutinePhaseId.forTitle("any"), // This is not used in the handler
