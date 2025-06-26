@@ -14,6 +14,7 @@ class RoutinePhaseService(
     private val phaseActivator: RoutinePhaseActivator,
     private val routineEventLog: RoutineEventLog,
     private val eventPublisher: ApplicationEventPublisher,
+    private val instanceRepository: RoutineRepository,
 ) {
     fun handleRoutineStart(instance: RoutineInstance) {
         val template = templateRepository.findById(instance.templateId) ?: return
@@ -22,25 +23,25 @@ class RoutinePhaseService(
             when (val condition = phase.condition) {
                 is AfterDays -> {
                     // Schedule phase to start after specified days
-                    routineScheduler.schedulePhase(instance, phase)
+                    routineScheduler.schedulePhaseActivation(instance, phase)
                 }
 
                 is AfterDuration -> {
                     if (condition.reference != null) {
                         // Check if the referenced parameter exists
-                        if (instance.parameters[condition.reference] != null) {
-                            routineScheduler.schedulePhase(instance, phase)
+                        if (instance.parameters.containsKey(condition.reference)) {
+                            routineScheduler.schedulePhaseActivation(instance, phase)
                         }
                         // If parameter doesn't exist, don't schedule
                     } else {
                         // No reference, schedule immediately
-                        routineScheduler.schedulePhase(instance, phase)
+                        routineScheduler.schedulePhaseActivation(instance, phase)
                     }
                 }
 
                 is AfterParameterSet -> {
                     // Check if the parameter is set
-                    if (instance.parameters[condition.parameterKey] != null) {
+                    if (instance.parameters.containsKey(condition.parameterKey)) {
                         phaseActivator.activatePhase(instance, phase)
                     }
                     // If parameter is not set, don't activate
@@ -54,7 +55,7 @@ class RoutinePhaseService(
 
                 is AfterEvent -> {
                     if (condition.eventType == RoutineAnchorEvent.ROUTINE_STARTED) {
-                        routineScheduler.schedulePhase(instance, phase)
+                        routineScheduler.schedulePhaseActivation(instance, phase)
                     }
                 }
 
@@ -68,17 +69,22 @@ class RoutinePhaseService(
 
     fun phaseTriggered(instance: RoutineInstance, phaseId: RoutinePhaseId) {
         val template = templateRepository.findById(instance.templateId) ?: return
-        phaseActivator.activatePhase(instance, template.phases.firstOrNull { it.id == phaseId } ?: return)
+        phaseActivator.activatePhase(instance, template.findPhase(phaseId) ?: return)
     }
 
     fun startPhaseIteration(instance: RoutineInstance, phaseId: RoutinePhaseId) {
         val template = templateRepository.findById(instance.templateId) ?: return
-        val phase = template.phases.firstOrNull { it.id == phaseId } ?: return
+        val phase = template.findPhase(phaseId) ?: return
+        
+        // Create a new iteration for this phase
+        val updatedInstance = instance.withNewIteration(phaseId)
+        instanceRepository.save(updatedInstance)
+        
         phase.steps.forEach { step ->
             when (step.timeOfDay) {
-                is TimeOfDayLocalTime -> routineScheduler.scheduleStep(instance, step, phaseId)
-                is TimeOfDayReference -> if (instance.parameters[(step.timeOfDay as TimeOfDayReference).reference] != null) {
-                    routineScheduler.scheduleStep(instance, step, phaseId)
+                is TimeOfDayLocalTime -> routineScheduler.scheduleStep(updatedInstance, step, phaseId)
+                is TimeOfDayReference -> if (updatedInstance.parameters.containsKey((step.timeOfDay as TimeOfDayReference).reference)) {
+                    routineScheduler.scheduleStep(updatedInstance, step, phaseId)
                 }
 
                 else -> Unit
@@ -86,14 +92,14 @@ class RoutinePhaseService(
         }
         routineEventLog.log(
             RoutineEventLogEntry(
-                instance.instanceId,
-                friendshipId = instance.friendshipId,
+                updatedInstance.instanceId,
+                friendshipId = updatedInstance.friendshipId,
                 event = RoutineEventType.PHASE_ITERATION_STARTED,
                 timestamp = Instant.now(),
                 metadata = mapOf("phaseId" to phaseId),
             )
         )
-        eventPublisher.publishEvent(RoutinePhaseIterationStarted(this.javaClass, instance.instanceId, phaseId))
+        eventPublisher.publishEvent(RoutinePhaseIterationStarted(this.javaClass, updatedInstance.instanceId, phaseId))
     }
 
     fun handleStoppedRoutineIteration(instance: RoutineInstance, reason: String? = null) {
@@ -118,6 +124,10 @@ class RoutinePhaseService(
             )
         )
         eventPublisher.publishEvent(StoppedTodaysRoutine(this.javaClass, instance.friendshipId, instance.instanceId))
+    }
+
+    fun conditionFulfilled(instance: RoutineInstance, phase: RoutinePhase) {
+        phaseActivator.activatePhase(instance, phase)
     }
 
     companion object {

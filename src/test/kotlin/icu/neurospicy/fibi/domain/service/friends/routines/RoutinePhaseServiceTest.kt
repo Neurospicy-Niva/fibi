@@ -19,6 +19,7 @@ class RoutinePhaseServiceTest {
     private val phaseActivator = mockk<RoutinePhaseActivator>(relaxed = true)
     private val eventPublisher = mockk<ApplicationEventPublisher>(relaxed = true)
     private val eventLog = mockk<RoutineEventLog>(relaxed = true)
+    private val instanceRepository = mockk<RoutineRepository>(relaxed = true)
     private lateinit var service: RoutinePhaseService
 
     @BeforeEach
@@ -29,6 +30,7 @@ class RoutinePhaseServiceTest {
             phaseActivator,
             eventLog,
             eventPublisher,
+            instanceRepository,
         )
     }
 
@@ -42,7 +44,7 @@ class RoutinePhaseServiceTest {
             every { templateRepository.findById(template.templateId) } returns template
 
             service.handleRoutineStart(instance)
-            verify { routineScheduler.schedulePhase(instance, phase) }
+            verify { routineScheduler.schedulePhaseActivation(instance, phase) }
         }
 
         @Test
@@ -53,7 +55,7 @@ class RoutinePhaseServiceTest {
             every { templateRepository.findById(template.templateId) } returns template
 
             service.handleRoutineStart(instance)
-            verify { routineScheduler.schedulePhase(instance, phase) }
+            verify { routineScheduler.schedulePhaseActivation(instance, phase) }
         }
 
         @Test
@@ -63,12 +65,12 @@ class RoutinePhaseServiceTest {
             val template = aRoutineTemplate { phases = listOf(phase) }
             val instance = aRoutineInstance {
                 this.template = template
-                this.parameters = mapOf("wakeUpTime" to LocalTime.of(7, 0))
+                this.parameters = mapOf("wakeUpTime" to TypedParameter.fromValue(LocalTime.of(7, 0)))
             }
             every { templateRepository.findById(template.templateId) } returns template
 
             service.handleRoutineStart(instance)
-            verify { routineScheduler.schedulePhase(instance, phase) }
+            verify { routineScheduler.schedulePhaseActivation(instance, phase) }
         }
 
         @Test
@@ -100,7 +102,7 @@ class RoutinePhaseServiceTest {
             val template = aRoutineTemplate { phases = listOf(phase) }
             val instance = aRoutineInstance {
                 this.template = template
-                this.parameters = mapOf("confirmedBuyingBreakfast" to true)
+                this.parameters = mapOf("confirmedBuyingBreakfast" to TypedParameter.fromValue(true))
             }
             every { templateRepository.findById(template.templateId) } returns template
 
@@ -152,7 +154,7 @@ class RoutinePhaseServiceTest {
 
             service.handleRoutineStart(instance)
             verify {
-                routineScheduler.schedulePhase(instance, phase)
+                routineScheduler.schedulePhaseActivation(instance, phase)
                 phaseActivator wasNot Called
             }
         }
@@ -217,13 +219,13 @@ class RoutinePhaseServiceTest {
             val template = aRoutineTemplate { phases = listOf(phase) }
             val instance = aRoutineInstance {
                 this.template = template
-                this.parameters = mapOf("wakeUpTime" to LocalTime.of(7, 0))
+                this.parameters = mapOf("wakeUpTime" to TypedParameter.fromValue(LocalTime.of(7, 0)))
             }
             every { templateRepository.findById(template.templateId) } returns template
 
             service.startPhaseIteration(instance, phase.id)
 
-            verify { routineScheduler.scheduleStep(instance, stepWithReference, phase.id) }
+            verify { routineScheduler.scheduleStep(any(), stepWithReference, phase.id) }
         }
 
         @Test
@@ -255,9 +257,9 @@ class RoutinePhaseServiceTest {
 
             service.startPhaseIteration(instance, phase.id)
 
-            verify { routineScheduler.scheduleStep(instance, step1, phase.id) }
-            verify { routineScheduler.scheduleStep(instance, step3, phase.id) }
-            verify(exactly = 0) { routineScheduler.scheduleStep(instance, step2, phase.id) }
+            verify { routineScheduler.scheduleStep(any(), step1, phase.id) }
+            verify { routineScheduler.scheduleStep(any(), step3, phase.id) }
+            verify(exactly = 0) { routineScheduler.scheduleStep(any(), step2, phase.id) }
         }
 
         @Test
@@ -271,6 +273,42 @@ class RoutinePhaseServiceTest {
             service.startPhaseIteration(instance, phase.id)
 
             verify(exactly = 0) { routineScheduler.scheduleStep(any(), any(), any()) }
+        }
+
+        @Test
+        fun `creates new phase iteration in progress`() {
+            val phase = aRoutinePhase {
+                steps = listOf(anActionStep { timeOfDay = TimeOfDayLocalTime(LocalTime.of(7, 0)) })
+            }
+            val template = aRoutineTemplate { phases = listOf(phase) }
+            val existingIteration = PhaseIterationProgress(
+                phaseId = phase.id,
+                iterationStart = Instant.now().minusSeconds(3600), // 1 hour ago
+                completedSteps = phase.steps.map { Completion(it.id) },
+                completedAt = Instant.now().minusSeconds(1800) // 30 minutes ago
+            )
+            val instance = aRoutineInstance { 
+                this.template = template
+                this.currentPhaseId = phase.id
+                this.progress = RoutineProgress(iterations = listOf(existingIteration))
+            }
+            every { templateRepository.findById(template.templateId) } returns template
+            every { instanceRepository.save(any()) } just Runs
+
+            service.startPhaseIteration(instance, phase.id)
+
+            verify { 
+                instanceRepository.save(match { savedInstance ->
+                    savedInstance.progress.iterations.size == 2 && // New iteration added
+                    savedInstance.progress.getCurrentIteration()?.phaseId == phase.id &&
+                    savedInstance.progress.getCurrentIteration()?.completedSteps?.isEmpty() == true &&
+                    savedInstance.progress.getCurrentIteration()?.completedAt == null &&
+                    Duration.between(
+                        savedInstance.progress.getCurrentIteration()?.iterationStart ?: Instant.MIN,
+                        Instant.now()
+                    ) <= Duration.ofSeconds(3) // New iteration should be recent
+                })
+            }
         }
     }
 
