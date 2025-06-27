@@ -13,8 +13,6 @@ import org.springframework.http.HttpMethod
 import org.springframework.http.ResponseEntity
 import org.springframework.web.client.RestTemplate
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @ExtendWith(MockKExtension::class)
@@ -31,45 +29,7 @@ class GithubRoutineTemplateLoaderTest {
         githubLoader = GithubRoutineTemplateLoader(
             restTemplate = restTemplate,
             objectMapper = objectMapper,
-            githubApiUrl = "https://api.github.com/repos/test/routines/contents"
         )
-    }
-
-    @Test
-    fun `loadFromUrl should return JSON content for valid URL`() {
-        // given
-        val templateJson = """
-        {
-          "title": "Morning Planning Routine",
-          "version": "1.0",
-          "description": "A structured morning routine"
-        }
-        """.trimIndent()
-
-        every { restTemplate.exchange(any<String>(), eq(HttpMethod.GET), any<HttpEntity<String>>(), eq(String::class.java)) } returns
-                ResponseEntity.ok(templateJson)
-
-        // when
-        val result = githubLoader.loadFromUrl("https://example.com/routine.json")
-
-        // then
-        assertNotNull(result)
-        assertTrue(result.contains("Morning Planning Routine"))
-        assertTrue(result.contains("1.0"))
-        assertTrue(result.contains("A structured morning routine"))
-    }
-
-    @Test
-    fun `loadFromUrl should return null when request fails`() {
-        // given
-        every { restTemplate.exchange(any<String>(), eq(HttpMethod.GET), any<HttpEntity<String>>(), eq(String::class.java)) } throws
-                RuntimeException("Network error")
-
-        // when
-        val result = githubLoader.loadFromUrl("https://example.com/routine.json")
-
-        // then
-        assertNull(result)
     }
 
     @Test
@@ -92,11 +52,18 @@ class GithubRoutineTemplateLoaderTest {
         """.trimIndent()
 
         every { restTemplate.getForObject(any<String>(), eq(String::class.java)) } returns githubApiResponse
-        every { restTemplate.exchange(any<String>(), eq(HttpMethod.GET), any<HttpEntity<String>>(), eq(String::class.java)) } returns
+        every {
+            restTemplate.exchange(
+                any<String>(),
+                eq(HttpMethod.GET),
+                any<HttpEntity<String>>(),
+                eq(String::class.java)
+            )
+        } returns
                 ResponseEntity.ok(templateJson)
 
         // when
-        val result = githubLoader.loadRoutineFilesFromGithub()
+        val result = githubLoader.loadRoutineFilesFromGithub("https://example.com/morning-routine.json")
 
         // then
         assertEquals(2, result.size) // Only .json files with "routine" in name
@@ -113,7 +80,7 @@ class GithubRoutineTemplateLoaderTest {
         every { restTemplate.getForObject(any<String>(), eq(String::class.java)) } throws RuntimeException("API error")
 
         // when
-        val result = githubLoader.loadRoutineFilesFromGithub()
+        val result = githubLoader.loadRoutineFilesFromGithub("https://example.com/morning-routine.json")
 
         // then
         assertTrue(result.isEmpty())
@@ -133,11 +100,18 @@ class GithubRoutineTemplateLoaderTest {
         val templateJson = """{"title": "Test"}"""
 
         every { restTemplate.getForObject(any<String>(), eq(String::class.java)) } returns githubApiResponse
-        every { restTemplate.exchange(any<String>(), eq(HttpMethod.GET), any<HttpEntity<String>>(), eq(String::class.java)) } returns
+        every {
+            restTemplate.exchange(
+                any<String>(),
+                eq(HttpMethod.GET),
+                any<HttpEntity<String>>(),
+                eq(String::class.java)
+            )
+        } returns
                 ResponseEntity.ok(templateJson)
 
         // when
-        val result = githubLoader.loadRoutineFilesFromGithub()
+        val result = githubLoader.loadRoutineFilesFromGithub("https://example.com/morning-routine.json")
 
         // then
         assertEquals(1, result.size) // Only morning-routine.json should match
