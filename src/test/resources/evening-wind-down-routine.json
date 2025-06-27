@@ -1,0 +1,102 @@
+{
+  "title": "Evening Wind-Down",
+  "version": "1.0",
+  "description": "Peaceful evening routine to help you transition from day to restful sleep. Includes reflection and relaxation phases.",
+  "setupSteps": [
+    {
+      "type": "parameter_request", 
+      "question": "What time would you like to start winding down for the evening? (e.g., 20:00)",
+      "parameterKey": "windDownTime",
+      "parameterType": "LOCAL_TIME"
+    },
+    {
+      "type": "parameter_request",
+      "question": "Do you prefer reading, journaling, or another quiet activity before bed?",
+      "parameterKey": "relaxationActivity", 
+      "parameterType": "STRING"
+    }
+  ],
+  "phases": [
+    {
+      "title": "Initial Wind-Down",
+      "steps": [
+        {
+          "type": "action",
+          "message": "Put away devices and dim the lights 🌅",
+          "timeOfDay": "${windDownTime}",
+          "expectedDurationMinutes": 5,
+          "expectConfirmation": true
+        },
+        {
+          "type": "action",
+          "message": "Take 5 deep breaths and release the day's tension",
+          "timeOfDay": "${windDownTime}+PT10M",
+          "expectedDurationMinutes": 5,
+          "expectConfirmation": true
+        }
+      ],
+      "schedule": "DAILY"
+    },
+    {
+      "title": "Reflection & Relaxation",
+      "condition": {
+        "type": "AFTER_DAYS",
+        "value": 3
+      },
+      "steps": [
+        {
+          "type": "action", 
+          "message": "Create a calm environment - devices away, lights dimmed 🕯️",
+          "timeOfDay": "${windDownTime}",
+          "expectedDurationMinutes": 5,
+          "expectConfirmation": true
+        },
+        {
+          "type": "action",
+          "message": "Practice mindful breathing to center yourself",
+          "timeOfDay": "${windDownTime}+PT10M",
+          "expectedDurationMinutes": 5,
+          "expectConfirmation": true
+        },
+        {
+          "type": "action",
+          "message": "Reflect on three positive moments from today",
+          "timeOfDay": "${windDownTime}+PT20M",
+          "expectedDurationMinutes": 10,
+          "expectConfirmation": true
+        },
+        {
+          "type": "action",
+          "message": "Enjoy your chosen activity: ${relaxationActivity}",
+          "timeOfDay": "${windDownTime}+PT35M",
+          "expectedDurationMinutes": 20,
+          "expectConfirmation": true
+        }
+      ],
+      "schedule": "DAILY"
+    }
+  ],
+  "triggers": [
+    {
+      "condition": {
+        "type": "AFTER_DAYS",
+        "value": 3
+      },
+      "effect": {
+        "type": "SEND_MESSAGE",
+        "message": "✨ Great job building your evening routine! Ready to add some reflection time?"
+      }
+    },
+    {
+      "condition": {
+        "type": "AFTER_PHASE_COMPLETIONS",
+        "phaseTitle": "Reflection & Relaxation",
+        "times": 10
+      },
+      "effect": {
+        "type": "SEND_MESSAGE", 
+        "message": "🌙 You've mastered the art of peaceful evenings! Your sleep quality must be improving."
+      }
+    }
+  ]
+} 
