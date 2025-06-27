@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
@@ -19,23 +18,20 @@ import org.springframework.web.client.RestTemplate
 class GithubRoutineTemplateLoader(
     private val restTemplate: RestTemplate,
     private val objectMapper: ObjectMapper,
-    @Value("\${github.routines.repository.url:https://api.github.com/repos/Neurospicy-Niva/routines/contents}")
-    private val githubApiUrl: String
 ) {
 
     companion object {
-        private val LOG = LoggerFactory.getLogger(GithubRoutineTemplateLoader::class.java)
-        private const val ROUTINE_FILE_PATTERN = "routine"
+        private val LOG = LoggerFactory.getLogger(this::class.java)
     }
 
     /**
      * Load routine files from GitHub repository
      * @return List of RoutineFile objects containing filename and JSON content
      */
-    fun loadRoutineFilesFromGithub(): List<RoutineFile> {
+    fun loadRoutineFilesFromGithub(url: String): List<RoutineFile> {
         return try {
-            val files = fetchRepositoryContents()
-            
+            val files = fetchRepositoryContents(url)
+
             files.filter { it.isRoutineFile() }
                 .mapNotNull { file ->
                     try {
@@ -62,12 +58,12 @@ class GithubRoutineTemplateLoader(
      * @param url The GitHub raw file URL
      * @return Raw JSON content as string, or null if failed
      */
-    fun loadFromUrl(url: String): String? {
+    private fun loadFromUrl(url: String): String? {
         return try {
             val headers = HttpHeaders()
             headers.set("Accept", "application/vnd.github.v3.raw")
             val entity = HttpEntity<String>(headers)
-            
+
             val response = restTemplate.exchange(url, HttpMethod.GET, entity, String::class.java)
             response.body
         } catch (e: Exception) {
@@ -79,7 +75,7 @@ class GithubRoutineTemplateLoader(
     /**
      * Fetch repository contents from GitHub API
      */
-    private fun fetchRepositoryContents(): List<GitHubFile> {
+    private fun fetchRepositoryContents(githubApiUrl: String): List<GitHubFile> {
         return try {
             val response = restTemplate.getForObject(githubApiUrl, String::class.java)
             val filesArray = objectMapper.readValue(response, Array<GitHubFile>::class.java)
@@ -98,13 +94,13 @@ data class GitHubFile(
     val name: String,
     val type: String,
     @JsonProperty("download_url")
-    val downloadUrl: String
+    val downloadUrl: String,
 ) {
     @JsonIgnore
     fun isRoutineFile(): Boolean {
-        return type == "file" && 
-               name.endsWith(".json") && 
-               name.contains("routine", ignoreCase = true)
+        return type == "file" &&
+                name.endsWith(".json") &&
+                name.contains("routine", ignoreCase = true)
     }
 }
 
@@ -113,5 +109,5 @@ data class GitHubFile(
  */
 data class RoutineFile(
     val filename: String,
-    val jsonContent: String
+    val jsonContent: String,
 )
