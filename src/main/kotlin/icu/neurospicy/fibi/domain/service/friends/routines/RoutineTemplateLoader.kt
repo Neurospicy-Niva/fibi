@@ -3,22 +3,17 @@ package icu.neurospicy.fibi.domain.service.friends.routines
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
-import org.springframework.boot.context.event.ApplicationStartedEvent
-import org.springframework.context.event.EventListener
-import org.springframework.core.io.Resource
-import org.springframework.core.io.support.PathMatchingResourcePatternResolver
 import org.springframework.stereotype.Service
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalTime
 
 /**
- * Loads routine templates from JSON files at application startup.
- * Scans for *.json files in the classpath and parses them as routine templates.
+ * Service responsible for parsing JSON content into RoutineTemplate objects.
+ * This is a pure parser that transforms JSON strings into domain objects.
  */
 @Service
 class RoutineTemplateLoader(
-    private val templateRepository: RoutineTemplateRepository,
     private val objectMapper: ObjectMapper,
 ) {
     
@@ -26,49 +21,23 @@ class RoutineTemplateLoader(
         private val LOG = LoggerFactory.getLogger(RoutineTemplateLoader::class.java)
     }
     
-    @EventListener
-    fun onApplicationStarted(event: ApplicationStartedEvent) {
-        LOG.info("Loading routine templates from JSON files...")
-        loadTemplatesFromResources()
-    }
-    
-    private fun loadTemplatesFromResources() {
-        val resolver = PathMatchingResourcePatternResolver()
-        try {
-            val resources = resolver.getResources("classpath*:**/*routine*.json")
-            
-            resources.forEach { resource ->
-                try {
-                    loadTemplate(resource)
-                } catch (e: Exception) {
-                    LOG.error("Failed to load routine template from ${resource.filename}: ${e.message}", e)
-                }
-            }
-            
-            LOG.info("Successfully loaded ${resources.size} routine template(s)")
+    /**
+     * Parse JSON string into RoutineTemplate
+     */
+    fun parseRoutineTemplate(jsonContent: String): RoutineTemplate {
+        return try {
+            val json = objectMapper.readTree(jsonContent)
+            parseRoutineTemplate(json)
         } catch (e: Exception) {
-            LOG.error("Failed to scan for routine template files: ${e.message}", e)
+            LOG.error("Failed to parse routine template JSON: ${e.message}", e)
+            throw IllegalArgumentException("Invalid routine template JSON: ${e.message}", e)
         }
     }
     
-    private fun loadTemplate(resource: Resource) {
-        LOG.debug("Loading template from: ${resource.filename}")
-        
-        val json = objectMapper.readTree(resource.inputStream)
-        val template = parseRoutineTemplate(json)
-        
-        // Check if template already exists
-        val existingTemplate = templateRepository.findById(template.templateId)
-        if (existingTemplate != null) {
-            LOG.debug("Template ${template.templateId} already exists, skipping")
-            return
-        }
-        
-        templateRepository.save(template)
-        LOG.info("Loaded routine template: ${template.title} (${template.templateId})")
-    }
-    
-    private fun parseRoutineTemplate(json: JsonNode): RoutineTemplate {
+    /**
+     * Parse JsonNode into RoutineTemplate
+     */
+    fun parseRoutineTemplate(json: JsonNode): RoutineTemplate {
         val title = json["title"]?.asText() ?: throw IllegalArgumentException("Missing required field: title")
         val version = json["version"]?.asText() ?: throw IllegalArgumentException("Missing required field: version")
         val description = json["description"]?.asText() ?: throw IllegalArgumentException("Missing required field: description")
@@ -87,7 +56,10 @@ class RoutineTemplateLoader(
         )
     }
     
-    private fun parseStep(json: JsonNode): RoutineStep {
+    /**
+     * Parse a step from JSON
+     */
+    fun parseStep(json: JsonNode): RoutineStep {
         val type = json["type"]?.asText() ?: throw IllegalArgumentException("Missing step type")
         val timeOfDay = json["timeOfDay"]?.asText()?.let { parseTimeOfDay(it) }
         
@@ -107,7 +79,7 @@ class RoutineTemplateLoader(
                 )
             }
             "action" -> {
-                val message = json["message"]?.asText() ?: throw IllegalArgumentException("Missing message for action step")
+                val message = json["action"]?.asText() ?: json["message"]?.asText() ?: throw IllegalArgumentException("Missing message/action for action step")
                 val expectConfirmation = json["expectConfirmation"]?.asBoolean() ?: false
                 val expectedDurationMinutes = json["expectedDurationMinutes"]?.asInt()
                 
@@ -130,9 +102,16 @@ class RoutineTemplateLoader(
         }
     }
     
-    private fun parseTimeOfDay(timeString: String): TimeOfDay {
+    /**
+     * Parse time of day from string
+     */
+    fun parseTimeOfDay(timeString: String): TimeOfDay {
         return when {
-            timeString.startsWith("\${") -> TimeOfDayReference(timeString)
+            timeString.contains("\${") -> {
+                // Parameter reference like "${wakeUpTime}"
+                val parameterName = timeString.removePrefix("\${").removeSuffix("}")
+                TimeOfDayReference(parameterName)
+            }
             else -> {
                 try {
                     val time = LocalTime.parse(timeString)
@@ -145,7 +124,10 @@ class RoutineTemplateLoader(
         }
     }
     
-    private fun parsePhase(json: JsonNode): RoutinePhase {
+    /**
+     * Parse a phase from JSON
+     */
+    fun parsePhase(json: JsonNode): RoutinePhase {
         val title = json["title"]?.asText() ?: throw IllegalArgumentException("Missing phase title")
         val steps = json["steps"]?.map { parseStep(it) } ?: throw IllegalArgumentException("Missing phase steps")
         val condition = json["condition"]?.let { parseTriggerCondition(it) }
@@ -161,7 +143,10 @@ class RoutineTemplateLoader(
         )
     }
     
-    private fun parseTriggerCondition(json: JsonNode): TriggerCondition {
+    /**
+     * Parse trigger condition from JSON
+     */
+    fun parseTriggerCondition(json: JsonNode): TriggerCondition {
         val type = json["type"]?.asText() ?: throw IllegalArgumentException("Missing trigger condition type")
         
         return when (type) {
@@ -171,7 +156,7 @@ class RoutineTemplateLoader(
             }
             "AFTER_PHASE_COMPLETIONS" -> {
                 val phaseTitle = json["phaseTitle"]?.asText() ?: throw IllegalArgumentException("Missing phaseTitle for AFTER_PHASE_COMPLETIONS")
-                val times = json["times"]?.asInt() ?: throw IllegalArgumentException("Missing times for AFTER_PHASE_COMPLETIONS")
+                val times = json["times"]?.asInt() ?: json["value"]?.asInt() ?: throw IllegalArgumentException("Missing times/value for AFTER_PHASE_COMPLETIONS")
                 // Convert phaseTitle to phaseId
                 val phaseId = RoutinePhaseId.forTitle(phaseTitle)
                 AfterPhaseCompletions(phaseId, times)
@@ -183,7 +168,7 @@ class RoutineTemplateLoader(
                 AfterDuration(reference, duration)
             }
             "AFTER_EVENT" -> {
-                val eventTypeString = json["eventType"]?.asText() ?: throw IllegalArgumentException("Missing eventType for AFTER_EVENT")
+                val eventTypeString = json["eventType"]?.asText() ?: json["event"]?.asText() ?: throw IllegalArgumentException("Missing eventType/event for AFTER_EVENT")
                 val eventType = RoutineAnchorEvent.valueOf(eventTypeString)
                 val phaseTitle = json["phaseTitle"]?.asText()
                 val durationString = json["duration"]?.asText()
@@ -198,14 +183,20 @@ class RoutineTemplateLoader(
         }
     }
     
-    private fun parseTrigger(json: JsonNode): RoutineTrigger {
+    /**
+     * Parse a trigger from JSON
+     */
+    fun parseTrigger(json: JsonNode): RoutineTrigger {
         val condition = parseTriggerCondition(json["condition"] ?: throw IllegalArgumentException("Missing trigger condition"))
         val effect = parseTriggerEffect(json["effect"] ?: throw IllegalArgumentException("Missing trigger effect"))
         
         return RoutineTrigger(condition = condition, effect = effect)
     }
     
-    private fun parseTriggerEffect(json: JsonNode): TriggerEffect {
+    /**
+     * Parse trigger effect from JSON
+     */
+    fun parseTriggerEffect(json: JsonNode): TriggerEffect {
         val type = json["type"]?.asText() ?: throw IllegalArgumentException("Missing trigger effect type")
         
         return when (type) {
