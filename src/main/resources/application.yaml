@@ -24,3 +24,7 @@ app:
   calendar:
     key: jsladkfjalskdfjlcvanlknre
     root: "data/calendars"
+github:
+  routines:
+    repository:
+      url: "https://api.github.com/repos/Neurospicy-Niva/routines/contents"

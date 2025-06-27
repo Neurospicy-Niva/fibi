@@ -12,11 +12,13 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.data.mongodb.core.convert.MongoCustomConversions
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder
 import org.springframework.scheduling.annotation.EnableAsync
+import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.web.client.RestTemplate
 
 
 @Configuration
 @EnableAsync
+@EnableScheduling
 class AppConfig {
     @Bean
     fun restTemplate(): RestTemplate {
