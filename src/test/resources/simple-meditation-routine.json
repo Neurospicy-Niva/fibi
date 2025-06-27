@@ -1,0 +1,42 @@
+{
+  "title": "Daily Meditation",
+  "version": "1.0",
+  "description": "Simple daily meditation routine to build mindfulness habit. Perfect for beginners.",
+  "setupSteps": [],
+  "phases": [
+    {
+      "title": "Mindful Moments",
+      "steps": [
+        {
+          "type": "message",
+          "message": "Good morning! Time for your daily mindfulness practice 🧘‍♀️",
+          "timeOfDay": "07:00"
+        },
+        {
+          "type": "action",
+          "message": "Find a quiet space and sit comfortably for 5 minutes of meditation",
+          "timeOfDay": "07:01",
+          "expectedDurationMinutes": 5,
+          "expectConfirmation": true
+        },
+        {
+          "type": "message",
+          "message": "Well done! You've completed another day of mindfulness practice ✨"
+        }
+      ],
+      "schedule": "DAILY"
+    }
+  ],
+  "triggers": [
+    {
+      "condition": {
+        "type": "AFTER_DAYS",
+        "value": 7
+      },
+      "effect": {
+        "type": "SEND_MESSAGE",
+        "message": "🌟 Congratulations! You've meditated for a full week. Notice any changes in how you feel?"
+      }
+    }
+  ]
+} 

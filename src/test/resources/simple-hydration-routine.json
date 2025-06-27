@@ -1,0 +1,71 @@
+{
+  "title": "Daily Hydration Reminder",
+  "version": "1.0", 
+  "description": "Stay hydrated throughout the day with gentle reminders. Perfect for building a basic healthy habit.",
+  "setupSteps": [
+    {
+      "type": "parameter_request",
+      "question": "How many glasses of water would you like to drink per day? (Recommended: 6-8)",
+      "parameterKey": "dailyWaterGoal",
+      "parameterType": "INT"
+    }
+  ],
+  "phases": [
+    {
+      "title": "Hydration Reminders",
+      "steps": [
+        {
+          "type": "action",
+          "message": "Time for a glass of water! 💧 (Goal: ${dailyWaterGoal} glasses today)",
+          "timeOfDay": "09:00",
+          "expectedDurationMinutes": 2,
+          "expectConfirmation": true
+        },
+        {
+          "type": "action", 
+          "message": "Midday hydration break! Keep up the good work 🌊",
+          "timeOfDay": "12:00",
+          "expectedDurationMinutes": 2,
+          "expectConfirmation": true
+        },
+        {
+          "type": "action",
+          "message": "Afternoon refresh - another glass of water? 💦",
+          "timeOfDay": "15:00", 
+          "expectedDurationMinutes": 2,
+          "expectConfirmation": true
+        },
+        {
+          "type": "action",
+          "message": "Evening hydration to end the day well 🌙",
+          "timeOfDay": "18:00",
+          "expectedDurationMinutes": 2,
+          "expectConfirmation": true
+        }
+      ],
+      "schedule": "DAILY"
+    }
+  ],
+  "triggers": [
+    {
+      "condition": {
+        "type": "AFTER_DAYS",
+        "value": 7
+      },
+      "effect": {
+        "type": "SEND_MESSAGE",
+        "message": "🎊 Congratulations! You've been staying hydrated for a whole week. Your body thanks you!"
+      }
+    },
+    {
+      "condition": {
+        "type": "AFTER_DAYS", 
+        "value": 21
+      },
+      "effect": {
+        "type": "SEND_MESSAGE",
+        "message": "🏆 Amazing! 21 days of consistent hydration. You've officially built a healthy habit!"
+      }
+    }
+  ]
+} 

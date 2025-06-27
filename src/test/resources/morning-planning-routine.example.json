@@ -1,165 +1,147 @@
 {
-  "id": "morning-planning-routine-v1",
-  "title": "Tagesstart mit Fokus",
-  "description": "Starte deinen Tag mit Klarheit durch 15 Minuten Meditation, Tagesplanung und einem gesunden Frühstück.",
-  "setup": {
-    "steps": [
-      {
-        "id": "step-set-wake-time",
-        "type": "parameter_request",
-        "description": "Wann möchtest du morgens aufstehen?",
-        "parameterKey": "wakeUpTime"
-      },
-      {
-        "id": "step-set-special-action",
-        "type": "parameter_request",
-        "description": "Gibt es eine Aktivität, die du morgens neu erlernen oder stärken möchtest (z. B. Meditation)?",
-        "parameterKey": "specialMorningActivity"
-      }
-    ]
-  },
+  "title": "Morning Planning Routine",
+  "version": "1.0",
+  "description": "Start your day with clarity through meditation, daily planning, and healthy breakfast. Gradually builds from simple habits to comprehensive morning routine.",
+  "setupSteps": [
+    {
+      "type": "parameter_request",
+      "question": "What time would you like to wake up each morning? (Please use 24-hour format, e.g., 07:00)",
+      "parameterKey": "wakeUpTime",
+      "parameterType": "LOCAL_TIME"
+    },
+    {
+      "type": "parameter_request", 
+      "question": "What's a morning activity you'd like to develop or strengthen? (e.g., meditation, stretching, journaling)",
+      "parameterKey": "specialMorningActivity",
+      "parameterType": "STRING"
+    }
+  ],
   "phases": [
     {
-      "id": "phase-1-initiation",
-      "title": "Einstieg: Morgenruhe aufbauen",
-      "condition": {
-        "type": "AFTER_DAYS",
-        "value": 3
-      },
+      "title": "Building Morning Calm",
       "steps": [
         {
-          "id": "step-drink-water",
           "type": "action",
-          "description": "Trinke ein Glas Wasser direkt nach dem Aufwachen.",
+          "message": "Drink a glass of water to hydrate after sleep",
           "timeOfDay": "${wakeUpTime}",
           "expectedDurationMinutes": 2,
           "expectConfirmation": true
         },
         {
-          "id": "step-do-special-activity",
-          "type": "action",
-          "description": "Starte mit deiner Spezialaktion: ${specialMorningActivity}.",
+          "type": "action", 
+          "message": "Practice your chosen activity: ${specialMorningActivity}",
           "timeOfDay": "${wakeUpTime}+PT5M",
           "expectedDurationMinutes": 15,
           "expectConfirmation": true
         }
-      ]
+      ],
+      "schedule": "DAILY"
     },
     {
-      "id": "phase-2-planning",
-      "title": "Tagesplanung aktivieren",
+      "title": "Adding Daily Planning",
       "condition": {
         "type": "AFTER_PHASE_COMPLETIONS",
-        "phaseId": "phase-1-initiation",
-        "times": 3
+        "phaseTitle": "Building Morning Calm", 
+        "times": 5
       },
       "steps": [
         {
-          "id": "step-drink-water",
           "type": "action",
-          "description": "Trinke ein Glas Wasser.",
+          "message": "Drink a glass of water to start fresh",
           "timeOfDay": "${wakeUpTime}",
           "expectedDurationMinutes": 2,
           "expectConfirmation": true
         },
         {
-          "id": "step-do-special-activity",
           "type": "action",
-          "description": "Deine Spezialaktion: ${specialMorningActivity}.",
-          "timeOfDay": "${wakeUpTime}+PT5M",
+          "message": "Continue with your ${specialMorningActivity} practice",
+          "timeOfDay": "${wakeUpTime}+PT5M", 
           "expectedDurationMinutes": 15,
           "expectConfirmation": true
         },
         {
-          "id": "step-list-tasks",
           "type": "action",
-          "description": "Schreibe drei Aufgaben auf, die du heute angehen möchtest.",
+          "message": "Write down three main tasks you want to accomplish today",
           "timeOfDay": "${wakeUpTime}+PT25M",
           "expectedDurationMinutes": 10,
           "expectConfirmation": true
         }
-      ]
+      ],
+      "schedule": "DAILY"
     },
     {
-      "id": "phase-3-breakfast",
-      "title": "Gesunder Abschluss: Frühstücken",
+      "title": "Complete Morning Routine", 
       "condition": {
-        "type": "AFTER_USER_CONFIRMATION",
-        "confirmationKey": "breakfastReady"
+        "type": "AFTER_PARAMETER_SET",
+        "parameterKey": "breakfastReady"
       },
       "steps": [
         {
-          "id": "step-drink-water",
           "type": "action",
-          "description": "Trinke ein Glas Wasser.",
+          "message": "Start with your hydration ritual",
           "timeOfDay": "${wakeUpTime}",
           "expectedDurationMinutes": 2,
           "expectConfirmation": true
         },
         {
-          "id": "step-do-special-activity",
           "type": "action",
-          "description": "Deine Spezialaktion: ${specialMorningActivity}.",
+          "message": "Engage in your ${specialMorningActivity}",
           "timeOfDay": "${wakeUpTime}+PT5M",
           "expectedDurationMinutes": 15,
           "expectConfirmation": true
         },
         {
-          "id": "step-list-tasks",
           "type": "action",
-          "description": "Plane deinen Tag.",
+          "message": "Plan your day and set priorities",
           "timeOfDay": "${wakeUpTime}+PT25M",
           "expectedDurationMinutes": 10,
           "expectConfirmation": true
         },
         {
-          "id": "step-prepare-breakfast",
           "type": "action",
-          "description": "Bereite ein gesundes Frühstück zu.",
+          "message": "Prepare and enjoy a healthy breakfast",
           "timeOfDay": "${wakeUpTime}+PT40M",
-          "expectedDurationMinutes": 15,
+          "expectedDurationMinutes": 20,
           "expectConfirmation": true
         }
-      ]
+      ],
+      "schedule": "DAILY"
     }
   ],
   "triggers": [
     {
-      "id": "trigger-celebration-phase-1",
       "condition": {
         "type": "AFTER_PHASE_COMPLETIONS",
-        "phaseId": "phase-1-initiation",
-        "times": 3
+        "phaseTitle": "Building Morning Calm",
+        "times": 5
       },
       "effect": {
-        "type": "SendMessage",
-        "message": "Super! Du hast deine Routine 3 Tage durchgezogen – morgen kommt ein neuer Schritt dazu! 🎉"
+        "type": "SEND_MESSAGE",
+        "message": "🎉 Excellent! You've built a solid morning foundation for 5 days. Ready to add daily planning to your routine?"
       }
     },
     {
-      "id": "trigger-checklist-tip",
       "condition": {
         "type": "AFTER_DURATION",
-        "reference": "PHASE_ENTERED",
-        "phaseId": "phase-2-planning",
-        "duration": "PT2D"
+        "reference": "PHASE_ENTERED", 
+        "duration": "PT48H"
       },
       "effect": {
-        "type": "SendMessage",
-        "message": "Tipp: Für deine Tagesplanung kannst du die 'Checkliste'-Funktion nutzen!"
+        "type": "SEND_MESSAGE",
+        "message": "💡 Tip: Consider using the task list feature to track your daily priorities more effectively!"
       }
     },
     {
-      "id": "trigger-breakfast-task",
       "condition": {
         "type": "AFTER_PHASE_COMPLETIONS",
-        "phaseId": "phase-2-planning",
-        "times": 3
+        "phaseTitle": "Adding Daily Planning",
+        "times": 7
       },
       "effect": {
-        "type": "CreateTask",
-        "taskDescription": "Plane den Einkauf für dein gesundes Frühstück.",
-        "confirmationKey": "breakfastReady"
+        "type": "CREATE_TASK",
+        "taskDescription": "Plan your healthy breakfast options and do some grocery shopping if needed",
+        "parameterKey": "breakfastReady",
+        "expiryDate": "2025-12-31T23:59:59Z"
       }
     }
   ]
