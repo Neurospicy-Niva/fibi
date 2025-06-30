@@ -1,6 +1,5 @@
 import org.springframework.boot.gradle.tasks.bundling.BootBuildImage
 
-
 plugins {
     kotlin("jvm") version "2.2.0"
     kotlin("plugin.spring") version "2.2.0"
