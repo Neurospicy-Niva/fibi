@@ -225,6 +225,15 @@ data class TimeOfDayReference(val reference: String) : TimeOfDay {
     }
 }
 
+/**
+ * Represents a time expression that can contain parameter substitution and arithmetic operations.
+ * Examples: "${wakeUpTime}+PT15M", "${startTime}-PT30M", "09:00+PT1H"
+ */
+data class TimeOfDayExpression(val expression: String) : TimeOfDay {
+    init {
+        require(expression.isNotBlank()) { "Expression must not be blank" }
+    }
+}
 
 enum class RoutineParameterType {
     STRING,

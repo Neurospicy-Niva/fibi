@@ -30,6 +30,7 @@ class QuartzRoutineScheduler(
     private val quartzSchedulerService: QuartzSchedulerService,
     private val eventPublisher: ApplicationEventPublisher,
     private val routineEventLog: RoutineEventLog,
+    private val timeExpressionEvaluator: TimeExpressionEvaluator,
 ) : RoutineScheduler {
     override fun scheduleTrigger(
         result: RoutineInstance,
@@ -109,6 +110,18 @@ class QuartzRoutineScheduler(
                 ref.atZone(zoneId)
             }
 
+
+            is TimeOfDayExpression -> {
+                val evaluatedTime = timeExpressionEvaluator.evaluateTimeExpression(tod.expression, instance, zoneId) ?: return
+                val zonedDateTime = evaluatedTime.atZone(zoneId)
+                // If the time is in the past, schedule for tomorrow
+                val now = ZonedDateTime.now(zoneId)
+                if (zonedDateTime.isBefore(now)) {
+                    zonedDateTime.plusDays(1)
+                } else {
+                    zonedDateTime
+                }
+            }
             null -> return // No time specified; nothing to schedule
         }
 

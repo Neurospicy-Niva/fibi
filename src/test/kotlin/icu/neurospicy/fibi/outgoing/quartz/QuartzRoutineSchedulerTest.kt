@@ -24,8 +24,9 @@ class QuartzRoutineSchedulerTest {
     private val friendshipLedger = mockk<FriendshipLedger>()
     private val eventPublisher = mockk<ApplicationEventPublisher>(relaxed = true)
     private val routineEventLog = mockk<RoutineEventLog>(relaxed = true)
+    private val timeExpressionEvaluator = mockk<TimeExpressionEvaluator>(relaxed = true)
     private val scheduler =
-        QuartzRoutineScheduler(friendshipLedger, quartzSchedulerService, eventPublisher, routineEventLog)
+        QuartzRoutineScheduler(friendshipLedger, quartzSchedulerService, eventPublisher, routineEventLog, timeExpressionEvaluator)
 
     @Nested
     inner class ScheduleTriggerTests {

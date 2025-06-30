@@ -86,6 +86,10 @@ class RoutinePhaseService(
                 is TimeOfDayReference -> if (updatedInstance.parameters.containsKey((step.timeOfDay as TimeOfDayReference).reference)) {
                     routineScheduler.scheduleStep(updatedInstance, step, phaseId)
                 }
+                is TimeOfDayExpression -> {
+                    // For expressions, let the scheduler try to evaluate and schedule
+                    routineScheduler.scheduleStep(updatedInstance, step, phaseId)
+                }
 
                 else -> Unit
             }

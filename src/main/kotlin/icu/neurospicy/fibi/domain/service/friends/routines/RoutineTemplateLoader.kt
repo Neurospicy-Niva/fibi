@@ -2,6 +2,7 @@ package icu.neurospicy.fibi.domain.service.friends.routines
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import icu.neurospicy.iso8601arithmetic.TemporalExpressionEvaluator
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.time.Duration
@@ -19,6 +20,7 @@ class RoutineTemplateLoader(
     
     companion object {
         private val LOG = LoggerFactory.getLogger(RoutineTemplateLoader::class.java)
+        private val temporalEvaluator = TemporalExpressionEvaluator()
     }
     
     /**
@@ -107,10 +109,25 @@ class RoutineTemplateLoader(
      */
     fun parseTimeOfDay(timeString: String): TimeOfDay {
         return when {
-            timeString.contains("\${") -> {
-                // Parameter reference like "${wakeUpTime}"
-                val parameterName = timeString.removePrefix("\${").removeSuffix("}")
-                TimeOfDayReference(parameterName)
+            // Complex expressions like "${wakeUpTime}+PT15M" or arithmetic
+            timeString.contains("+") || timeString.contains("-") || timeString.contains("\${") -> {
+                // Check if it's a simple parameter reference (for backward compatibility)
+                if (timeString.startsWith("\${") && timeString.endsWith("}") && !timeString.contains("+") && !timeString.contains("-")) {
+                    val parameterName = timeString.removePrefix("\${").removeSuffix("}")
+                    TimeOfDayReference(parameterName)
+                } else {
+                    // Complex expression - validate it can be parsed
+                    try {
+                        // Test parse with a dummy context to validate syntax
+                        val testContext = mapOf("testParam" to java.time.LocalDateTime.now())
+                        val testExpression = timeString.replace(Regex("\\$\\{[^}]+\\}"), "\${testParam}")
+                        temporalEvaluator.evaluate(testExpression, testContext)
+                        TimeOfDayExpression(timeString)
+                    } catch (e: Exception) {
+                        LOG.warn("Invalid time expression '$timeString', treating as reference: ${e.message}")
+                        TimeOfDayReference(timeString)
+                    }
+                }
             }
             else -> {
                 try {
