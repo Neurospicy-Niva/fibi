@@ -38,6 +38,7 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("com.maximeroussy.invitrode:invitrode:2.0.2") // used for ids - generates random english pronounceable words
     implementation("org.mnode.ical4j:ical4j:4.1.1")
+    implementation("icu.neurospicy:simple-iso8601-arithmetic:1.0.0") // For parsing complex time expressions in routine templates
 
     developmentOnly("org.springframework.boot:spring-boot-devtools")
     developmentOnly("org.springframework.boot:spring-boot-docker-compose")
