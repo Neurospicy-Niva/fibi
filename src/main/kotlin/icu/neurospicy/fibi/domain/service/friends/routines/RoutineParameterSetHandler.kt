@@ -20,6 +20,7 @@ class RoutineParameterSetHandler(
         // Reschedule triggers regardless of the current phase state
         val affectedTriggers = template.triggers.filter { trigger ->
             when (val condition = trigger.condition) {
+                is AtTimeExpression -> condition.timeExpression.contains("\${$parameterKey}")
                 is AfterDuration -> condition.reference == parameterKey
                 else -> false
             }
