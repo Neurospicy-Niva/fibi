@@ -4,6 +4,7 @@ import icu.neurospicy.fibi.domain.model.FriendshipId
 import icu.neurospicy.fibi.domain.model.OutgoingTextMessage
 import icu.neurospicy.fibi.domain.model.events.SendMessageCmd
 import icu.neurospicy.fibi.domain.repository.TaskRepository
+import icu.neurospicy.fibi.domain.repository.FriendshipLedger
 import icu.neurospicy.fibi.domain.service.friends.interaction.GoalContextRepository
 import icu.neurospicy.fibi.domain.service.friends.routines.builders.*
 import icu.neurospicy.fibi.domain.service.friends.routines.events.RoutineStepTriggered
@@ -26,6 +27,8 @@ class RoutineStepExecutorTest {
     private val eventLog = mockk<RoutineEventLog>(relaxed = true)
     private val goalContextRepository = mockk<GoalContextRepository>()
     private val taskRepository = mockk<TaskRepository>()
+    private val messageVariableSubstitutor = mockk<MessageVariableSubstitutor>(relaxed = true)
+    private val friendshipLedger = mockk<FriendshipLedger>(relaxed = true)
 
     private val stepExecutor = RoutineStepExecutor(
         instanceRepository,
@@ -33,7 +36,9 @@ class RoutineStepExecutorTest {
         eventPublisher,
         eventLog,
         goalContextRepository,
-        taskRepository
+        taskRepository,
+        messageVariableSubstitutor,
+        friendshipLedger
     )
 
     @Test
@@ -64,6 +69,7 @@ class RoutineStepExecutorTest {
         coEvery { templateRepository.findById(template.templateId) } returns template
         coEvery { taskRepository.save(any()) } returns mockk(relaxed = true) { every { id } returns taskId }
         coEvery { instanceRepository.save(any()) } returns mockk(relaxed = true)
+        coEvery { messageVariableSubstitutor.substituteVariables(any(), any(), any()) } returns step.description
 
         val event = RoutineStepTriggered(
             _source = this.javaClass,
@@ -188,6 +194,7 @@ class RoutineStepExecutorTest {
         coEvery { instanceRepository.findById(friendshipId, instance.instanceId) } returns instance
         coEvery { templateRepository.findById(template.templateId) } returns template
         coEvery { instanceRepository.save(any()) } just runs
+        coEvery { messageVariableSubstitutor.substituteVariables(any(), any(), any()) } returns message
 
         val event = RoutineStepTriggered(
             _source = this.javaClass,
@@ -312,6 +319,7 @@ class RoutineStepExecutorTest {
         coEvery { instanceRepository.findById(friendshipId, instance.instanceId) } returns instance
         coEvery { templateRepository.findById(template.templateId) } returns template
         justRun { instanceRepository.save(any()) }
+        coEvery { messageVariableSubstitutor.substituteVariables(any(), any(), any()) } returns step.description
 
         val event = RoutineStepTriggered(
             _source = this.javaClass,

@@ -71,6 +71,7 @@ class SetupRoutineSubtaskHandler(
                 )
 
                 RoutineParameterType.BOOLEAN -> extractor.extractBoolean(clarificationQuestion.text, answer.text)
+                RoutineParameterType.INSTANT -> extractor.extractInstant(clarificationQuestion.text, answer.text)
             }
         } catch (e: Exception) {
             return SubtaskClarificationResult.failure("Llm threw exception: $e", subtask)

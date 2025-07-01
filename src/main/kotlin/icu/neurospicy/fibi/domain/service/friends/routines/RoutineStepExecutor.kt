@@ -4,6 +4,7 @@ import icu.neurospicy.fibi.domain.model.Channel
 import icu.neurospicy.fibi.domain.model.OutgoingTextMessage
 import icu.neurospicy.fibi.domain.model.Task
 import icu.neurospicy.fibi.domain.model.events.SendMessageCmd
+import icu.neurospicy.fibi.domain.repository.FriendshipLedger
 import icu.neurospicy.fibi.domain.repository.TaskRepository
 import icu.neurospicy.fibi.domain.service.friends.interaction.*
 import icu.neurospicy.fibi.domain.service.friends.routines.events.ConfirmedActionStep
@@ -13,6 +14,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import java.time.Instant
+import java.time.ZoneId
 
 @Service
 class RoutineStepExecutor(
@@ -22,6 +24,8 @@ class RoutineStepExecutor(
     private val eventLog: RoutineEventLog,
     private val goalContextRepository: GoalContextRepository,
     private val taskRepository: TaskRepository,
+    private val messageVariableSubstitutor: MessageVariableSubstitutor,
+    private val friendshipLedger: FriendshipLedger,
 ) {
     companion object {
         private val LOG = LoggerFactory.getLogger(RoutineStepExecutor::class.java)
@@ -125,11 +129,14 @@ class RoutineStepExecutor(
         step: MessageRoutineStep,
         stepParameters: Map<String, Any>,
     ) {
+        val zoneId = friendshipLedger.findTimezoneBy(event.friendshipId) ?: ZoneId.of("UTC")
+        val substitutedMessage = messageVariableSubstitutor.substituteVariables(step.message, instance, zoneId)
+        
         eventPublisher.publishEvent(
             SendMessageCmd(
                 this.javaClass,
                 event.friendshipId,
-                OutgoingTextMessage(Channel.SIGNAL, step.message)
+                OutgoingTextMessage(Channel.SIGNAL, substitutedMessage)
             )
         )
         eventPublisher.publishEvent(
@@ -175,19 +182,21 @@ class RoutineStepExecutor(
         stepParameters: Map<String, Any>,
     ) {
         val eventLogParameters = stepParameters.toMutableMap()
+        val zoneId = friendshipLedger.findTimezoneBy(event.friendshipId) ?: ZoneId.of("UTC")
+        val substitutedMessage = messageVariableSubstitutor.substituteVariables(step.description, instance, zoneId)
 
         // Send the action message
         eventPublisher.publishEvent(
             SendMessageCmd(
                 this.javaClass,
                 event.friendshipId,
-                OutgoingTextMessage(Channel.SIGNAL, step.description)
+                OutgoingTextMessage(Channel.SIGNAL, substitutedMessage)
             )
         )
 
         if (step.expectConfirmation) {
             // Create task for confirmation-based steps
-            val taskId = taskRepository.save(Task(owner = event.friendshipId, title = step.description)).let { it.id!! }
+            val taskId = taskRepository.save(Task(owner = event.friendshipId, title = substitutedMessage)).let { it.id!! }
             instanceRepository.save(
                 instance.copy(
                     concepts = instance.concepts + TaskRoutineConcept(

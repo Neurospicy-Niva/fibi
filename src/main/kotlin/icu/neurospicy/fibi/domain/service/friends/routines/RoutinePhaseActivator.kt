@@ -26,7 +26,7 @@ class RoutinePhaseActivator(
 
         scheduler.schedulePhaseIterations(updateRoutine, phase)
 
-        eventPublisher.publishEvent(PhaseActivated(this.javaClass, updateRoutine.instanceId, phase.id))
+        eventPublisher.publishEvent(PhaseActivated(this.javaClass, updateRoutine.friendshipId, updateRoutine.instanceId, phase.id))
         eventLog.log(
             RoutineEventLogEntry(
                 routineInstanceId = updateRoutine.instanceId,

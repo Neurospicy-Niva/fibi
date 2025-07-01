@@ -63,6 +63,7 @@ class AnswerQuestionSubtaskHandler(
             )
 
             RoutineParameterType.BOOLEAN -> extractor.extractBoolean(clarificationQuestion.text, answer.text)
+            RoutineParameterType.INSTANT -> extractor.extractInstant(clarificationQuestion.text, answer.text)
         }
         if (!result.completed) {
             return SubtaskClarificationResult.needsClarification(

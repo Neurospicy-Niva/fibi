@@ -33,8 +33,7 @@ class RoutinePhaseDeactivator(
      * - Publishes deactivation event for other services to clean up tasks/goals
      * - Logs the deactivation
      * 
-     * NOTE: Does NOT affect TriggerCondition-based phase schedulers (AfterDays, AfterDuration, etc.)
-     * as these handle future phase activations independently of current phase state.
+     * NOTE: Does NOT affect TriggerCondition-based phase schedulers (AfterDays, etc.)
      */
     fun deactivatePhase(instance: RoutineInstance, phaseId: RoutinePhaseId) {
         LOG.info("Deactivating phase {} for routine instance {}", phaseId, instance.instanceId)
