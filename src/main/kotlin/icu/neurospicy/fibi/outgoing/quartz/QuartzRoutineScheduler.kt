@@ -43,12 +43,22 @@ class QuartzRoutineScheduler(
         val triggerTime: ZonedDateTime = when (condition) {
             is AfterDays -> ZonedDateTime.now(zoneId).plusDays(condition.value.toLong())
             is AfterDuration -> {
-                if (condition.reference == null) {
-                    ZonedDateTime.now(zoneId).plus(condition.duration)
+                val baseTime = if (condition.reference != null) {
+                    val ref = result.parameters[condition.reference]?.value as? Instant
+                    ref?.atZone(zoneId) ?: return
                 } else {
-                    (result.parameters[condition.reference]?.value as? Instant)?.atZone(zoneId)?.plus(condition.duration)
-                        ?: return
+                    ZonedDateTime.now(zoneId)
                 }
+                baseTime.plus(condition.duration)
+            }
+            is AtTimeExpression -> {
+                timeExpressionEvaluator.evaluateAtTimeExpression(condition.timeExpression, result, zoneId)
+                    ?.atZone(zoneId) ?: return
+            }
+
+            is AfterEvent -> {
+                timeExpressionEvaluator.evaluateAtTimeExpression(condition.timeExpression, result, zoneId)
+                    ?.atZone(zoneId) ?: return
             }
 
             else -> return
@@ -112,7 +122,8 @@ class QuartzRoutineScheduler(
 
 
             is TimeOfDayExpression -> {
-                val evaluatedTime = timeExpressionEvaluator.evaluateTimeExpression(tod.expression, instance, zoneId) ?: return
+                val evaluatedTime =
+                    timeExpressionEvaluator.evaluateTimeExpression(tod.expression, instance, zoneId) ?: return
                 val zonedDateTime = evaluatedTime.atZone(zoneId)
                 // If the time is in the past, schedule for tomorrow
                 val now = ZonedDateTime.now(zoneId)
@@ -122,6 +133,7 @@ class QuartzRoutineScheduler(
                     zonedDateTime
                 }
             }
+
             null -> return // No time specified; nothing to schedule
         }
 
@@ -171,13 +183,24 @@ class QuartzRoutineScheduler(
             }
 
             is AfterDuration -> {
-                (condition.reference?.let {
-                    val ref = instance.parameters[condition.reference]?.value as? Instant ?: return
-                    ref.atZone(zoneId)
-                } ?: Instant.now().atZone(zoneId)) + condition.duration
+                val baseTime = if (condition.reference != null) {
+                    val ref = instance.parameters[condition.reference]?.value as? Instant
+                    ref?.atZone(zoneId) ?: return
+                } else {
+                    ZonedDateTime.now(zoneId)
+                }
+                baseTime.plus(condition.duration)
             }
 
-            is AfterEvent -> Instant.now().atZone(zoneId) + condition.duration
+            is AtTimeExpression -> {
+                timeExpressionEvaluator.evaluateAtTimeExpression(condition.timeExpression, instance, zoneId)
+                    ?.atZone(zoneId) ?: return
+            }
+
+            is AfterEvent -> {
+                timeExpressionEvaluator.evaluateAtTimeExpression(condition.timeExpression, instance, zoneId)
+                    ?.atZone(zoneId) ?: return
+            }
 
             else -> return // No time specified; nothing to schedule
         }

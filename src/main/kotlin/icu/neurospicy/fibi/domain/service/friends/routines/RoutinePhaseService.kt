@@ -27,9 +27,16 @@ class RoutinePhaseService(
                 }
 
                 is AfterDuration -> {
-                    if (condition.reference != null) {
+                    if (condition.reference == null || instance.parameters.containsKey(condition.reference)) {
+                        routineScheduler.schedulePhaseActivation(instance, phase)
+                    }
+                    // If reference is set but parameter is missing, do not schedule
+                }
+
+                is AtTimeExpression -> {
+                    if (condition.timeExpression.contains("\${")) {
                         // Check if the referenced parameter exists
-                        if (instance.parameters.containsKey(condition.reference)) {
+                        if (instance.parameters.any { (key, _) -> condition.timeExpression.contains("\${$key}") }) {
                             routineScheduler.schedulePhaseActivation(instance, phase)
                         }
                         // If parameter doesn't exist, don't schedule
@@ -90,8 +97,7 @@ class RoutinePhaseService(
                     // For expressions, let the scheduler try to evaluate and schedule
                     routineScheduler.scheduleStep(updatedInstance, step, phaseId)
                 }
-
-                else -> Unit
+                null -> Unit
             }
         }
         routineEventLog.log(
@@ -135,6 +141,6 @@ class RoutinePhaseService(
     }
 
     companion object {
-        val LOG = LoggerFactory.getLogger(this::class.java)
+        val LOG = LoggerFactory.getLogger(RoutinePhaseService::class.java)
     }
 }

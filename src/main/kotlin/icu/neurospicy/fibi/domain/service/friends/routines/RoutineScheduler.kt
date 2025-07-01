@@ -6,7 +6,7 @@ import icu.neurospicy.fibi.domain.model.FriendshipId
  * Scheduler interface for routine-related jobs with clear distinction between scheduler types:
  * 
  * 1. **TriggerCondition-based schedulers** (phase.condition):
- *    - Handle future phase activations based on AfterDays, AfterDuration, etc.
+ *    - Handle future phase activations based on AfterDays, etc.
  *    - One-time execution when condition is met
  *    - Should persist across phase transitions
  * 
