@@ -59,6 +59,7 @@ data class RoutineStarted(
 
 data class PhaseActivated(
     val _source: Any,
+    val friendshipId: FriendshipId,
     val instanceId: RoutineInstanceId,
     val phaseId: RoutinePhaseId,
 ) : ApplicationEvent(_source)
