@@ -100,7 +100,7 @@ class RoutineTransitionHandler(
                         RoutineAnchorEvent.ROUTINE_STARTED -> Unit // Already handled in RoutinePhaseService.handleRoutineStart
                     }
                 }
-                // Other conditions (AfterDays, AfterDuration) are handled by scheduler
+                // Other conditions (AfterDays) are handled by scheduler
                 else -> Unit
                 }
             } catch (e: Exception) {
