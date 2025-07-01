@@ -178,23 +178,32 @@ class RoutineTemplateLoader(
                 val phaseId = RoutinePhaseId.forTitle(phaseTitle)
                 AfterPhaseCompletions(phaseId, times)
             }
-            "AFTER_DURATION" -> {
-                val durationString = json["duration"]?.asText() ?: throw IllegalArgumentException("Missing duration for AFTER_DURATION")
-                val duration = Duration.parse(durationString)
-                val reference = json["reference"]?.asText()
-                AfterDuration(reference, duration)
+            "AT_TIME_EXPRESSION" -> {
+                val timeExpression = json["timeExpression"]?.asText() ?: json["expression"]?.asText() ?: throw IllegalArgumentException("Missing timeExpression for AT_TIME_EXPRESSION")
+                // duration parsing removed
+                // reference is now part of timeExpression
+                AtTimeExpression(timeExpression)
             }
             "AFTER_EVENT" -> {
                 val eventTypeString = json["eventType"]?.asText() ?: json["event"]?.asText() ?: throw IllegalArgumentException("Missing eventType/event for AFTER_EVENT")
                 val eventType = RoutineAnchorEvent.valueOf(eventTypeString)
                 val phaseTitle = json["phaseTitle"]?.asText()
-                val durationString = json["duration"]?.asText()
-                val duration = durationString?.let { Duration.parse(it) }
-                AfterEvent(eventType, phaseTitle, duration)
+                val timeExpression = json["timeExpression"]?.asText() ?: json["duration"]?.asText() ?: "PT0S"
+                // duration parsing removed
+                AfterEvent(eventType, phaseTitle, timeExpression)
             }
             "AFTER_PARAMETER_SET" -> {
                 val parameterKey = json["parameterKey"]?.asText() ?: throw IllegalArgumentException("Missing parameterKey for AFTER_PARAMETER_SET")
                 AfterParameterSet(parameterKey)
+            }
+            "AFTER_DURATION" -> {
+                val durationStr = json["duration"]?.asText() ?: json["value"]?.asText() ?: throw IllegalArgumentException("Missing duration/value for AFTER_DURATION")
+                val reference = json["reference"]?.asText()
+                if (reference != null) {
+                    AfterDuration(reference, java.time.Duration.parse(durationStr))
+                } else {
+                    AfterDuration(null, java.time.Duration.parse(durationStr))
+                }
             }
             else -> throw IllegalArgumentException("Unknown trigger condition type: $type")
         }
