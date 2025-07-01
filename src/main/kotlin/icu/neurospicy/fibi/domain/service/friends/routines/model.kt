@@ -241,7 +241,8 @@ enum class RoutineParameterType {
     BOOLEAN,
     INT,
     FLOAT,
-    DATE;
+    DATE,
+    INSTANT;
     
     /**
      * Validates and converts a string value to the appropriate type
@@ -274,6 +275,11 @@ enum class RoutineParameterType {
             } catch (e: Exception) {
                 throw IllegalArgumentException("Invalid date format: '$value'. Expected format: yyyy-MM-dd")
             }
+            INSTANT -> try {
+                Instant.parse(value)
+            } catch (e: Exception) {
+                throw IllegalArgumentException("Invalid instant format: '$value'. Expected format: yyyy-MM-ddTHH:mm:ssZ")
+            }
         }
     }
     
@@ -288,6 +294,7 @@ enum class RoutineParameterType {
             INT -> "A whole number (e.g., 42)"
             FLOAT -> "A decimal number (e.g., 3.14)"
             DATE -> "Date in yyyy-MM-dd format (e.g., 2024-12-25)"
+            INSTANT -> "Date and time in yyyy-MM-ddTHH:mm:ssZ format (e.g., 2024-12-25T14:30:00Z)"
         }
     }
 }
@@ -320,6 +327,7 @@ data class TypedParameter(
                 is Float -> RoutineParameterType.FLOAT
                 is Double -> RoutineParameterType.FLOAT // Convert Double to Float
                 is LocalDate -> RoutineParameterType.DATE
+                is Instant -> RoutineParameterType.INSTANT
                 else -> RoutineParameterType.STRING // Fallback to string
             }
             return TypedParameter(if (value is Double) value.toFloat() else value, type)
@@ -351,6 +359,10 @@ data class TypedParameter(
             }
             LocalDate::class -> {
                 require(type == RoutineParameterType.DATE) { "Parameter type is $type, not DATE" }
+                value as T
+            }
+            Instant::class -> {
+                require(type == RoutineParameterType.INSTANT) { "Parameter type is $type, not INSTANT" }
                 value as T
             }
             else -> throw IllegalArgumentException("Unsupported type: ${T::class}")
@@ -390,23 +402,45 @@ data class AfterDays(
     }
 }
 
+/**
+ * Trigger condition that fires after a specified duration from a reference point.
+ * 
+ * @param reference The parameter key to use as reference point (optional)
+ * @param duration The duration to wait after the reference point
+ */
 data class AfterDuration(
     val reference: String? = null,
     val duration: Duration,
 ) : TimeBasedTriggerCondition {
     init {
-        require(!duration.isNegative) { "Duration must not be negative" }
-        reference?.let { require(it.isNotBlank()) { "Reference must not be blank if provided" } }
+        require(duration.isPositive) { "Duration must be positive" }
     }
 }
 
+/**
+ * Trigger condition that fires at a specific time calculated from a time expression.
+ * 
+ * Examples:
+ * - "${wakeUpTime}+PT2H" - 2 hours after wake up time
+ * - "${bedTime}-PT1H" - 1 hour before bed time  
+ * - "${ROUTINE_START}+PT30M" - 30 minutes after routine started
+ * - "${NOW}+PT45M" - 45 minutes from now
+ * - "07:30" - at 7:30 AM today (or tomorrow if past)
+ */
+data class AtTimeExpression(
+    val timeExpression: String,
+) : TimeBasedTriggerCondition {
+    init {
+        require(timeExpression.isNotBlank()) { "Time expression must not be blank" }
+    }
+}
 data class AfterEvent(
     val eventType: RoutineAnchorEvent,
     val phaseTitle: String? = null,
-    val duration: Duration? = Duration.ZERO,
+    val timeExpression: String = "PT0S",
 ) : TimeBasedTriggerCondition {
     init {
-        duration?.let { require(!it.isNegative) { "Duration must not be negative" } }
+        timeExpression.let { require(it.isNotBlank()) { "Time expression must not be blank" } }
         phaseTitle?.let { require(it.isNotBlank()) { "Phase title must not be blank if provided" } }
     }
 }
@@ -476,6 +510,7 @@ data class RoutineInstance(
         ) else emptyList()
     ),
     val concepts: List<RoutineConcept> = mutableListOf(),
+    val startedAt: Instant = Instant.now(),
     @Indexed(unique = true)
     val instanceId: RoutineInstanceId = RoutineInstanceId.forInstance(templateId, friendshipId),
 ) {
