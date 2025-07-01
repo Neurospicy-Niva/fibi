@@ -4,6 +4,7 @@ import icu.neurospicy.fibi.domain.model.Channel
 import icu.neurospicy.fibi.domain.model.OutgoingTextMessage
 import icu.neurospicy.fibi.domain.model.Task
 import icu.neurospicy.fibi.domain.model.events.SendMessageCmd
+import icu.neurospicy.fibi.domain.repository.FriendshipLedger
 import icu.neurospicy.fibi.domain.repository.TaskRepository
 import icu.neurospicy.fibi.domain.service.friends.routines.events.RoutineTriggerFired
 import org.slf4j.LoggerFactory
@@ -11,6 +12,7 @@ import org.springframework.context.ApplicationEventPublisher
 import org.springframework.context.event.EventListener
 import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Service
+import java.time.ZoneId
 
 /**
  * Handles execution of routine triggers and their associated effects.
@@ -23,6 +25,8 @@ class RoutineTriggerService(
     private val taskRepository: TaskRepository,
     private val eventPublisher: ApplicationEventPublisher,
     private val eventLog: RoutineEventLog,
+    private val messageVariableSubstitutor: MessageVariableSubstitutor,
+    private val friendshipLedger: FriendshipLedger,
 ) {
 
     @EventListener
@@ -46,25 +50,31 @@ class RoutineTriggerService(
         }
 
         try {
-            executeTriggerEffect(trigger.effect, event)
+            executeTriggerEffect(instance, trigger.effect, event)
             LOG.info("Successfully executed trigger {} effect for routine {}", event.triggerId, event.instanceId)
         } catch (e: Exception) {
             LOG.error(
                 "Failed to execute trigger {} effect for routine {}: {}",
-                event.triggerId, event.instanceId, e.message, e
+                event.triggerId,
+                event.instanceId,
+                e.message,
+                e
             )
         }
     }
 
-    private fun executeTriggerEffect(effect: TriggerEffect, event: RoutineTriggerFired) {
+    private fun executeTriggerEffect(instance: RoutineInstance, effect: TriggerEffect, event: RoutineTriggerFired) {
+        val zoneId = friendshipLedger.findTimezoneBy(event.friendshipId) ?: ZoneId.of("UTC")
+
         when (effect) {
             is SendMessage -> {
-                LOG.debug("Sending trigger message: {}", effect.message)
+                val substitutedMessage =
+                    messageVariableSubstitutor.substituteVariables(effect.message, instance, zoneId)
+
+                LOG.debug("Sending trigger message: {}", substitutedMessage)
                 eventPublisher.publishEvent(
                     SendMessageCmd(
-                        this.javaClass,
-                        event.friendshipId,
-                        OutgoingTextMessage(Channel.SIGNAL, effect.message)
+                        this.javaClass, event.friendshipId, OutgoingTextMessage(Channel.SIGNAL, substitutedMessage)
                     )
                 )
 
@@ -77,26 +87,27 @@ class RoutineTriggerService(
                         metadata = mapOf(
                             "triggerId" to event.triggerId.toString(),
                             "effectType" to "SendMessage",
-                            "message" to effect.message
+                            "message" to substitutedMessage
                         )
                     )
                 )
             }
 
             is CreateTask -> {
-                LOG.debug("Creating trigger task: {}", effect.taskDescription)
+                val substitutedTaskDescription =
+                    messageVariableSubstitutor.substituteVariables(effect.taskDescription, instance, zoneId)
+
+                LOG.debug("Creating trigger task: {}", substitutedTaskDescription)
                 val task = Task(
                     owner = event.friendshipId,
-                    title = effect.taskDescription,
+                    title = substitutedTaskDescription,
                 )
                 val savedTask = taskRepository.save(task)
 
-                // Optionally link task to routine instance for tracking
-                val instance = routineRepository.findById(event.friendshipId, event.instanceId)
-                if (instance != null && savedTask.id != null) {
+                if (savedTask.id != null) {
                     val updatedInstance = instance.copy(
                         concepts = instance.concepts + TaskRoutineConcept(
-                            linkedTaskId = savedTask.id!!,
+                            linkedTaskId = savedTask.id,
                             linkedStep = RoutineStepId.forDescription("trigger-${effect.parameterKey}")
                         )
                     )
@@ -113,7 +124,7 @@ class RoutineTriggerService(
                             "triggerId" to event.triggerId.toString(),
                             "effectType" to "CreateTask",
                             "taskId" to (savedTask.id ?: "unknown"),
-                            "taskDescription" to effect.taskDescription,
+                            "taskDescription" to substitutedTaskDescription,
                             "parameterKey" to effect.parameterKey
                         )
                     )
