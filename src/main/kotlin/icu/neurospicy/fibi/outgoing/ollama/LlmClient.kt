@@ -25,17 +25,16 @@ class LlmClient(
         retryConfig: RetryConfig = RetryConfig(),
     ): String? {
         var options = ollamaOptions
-        repeat(retryConfig.maxRetries) { trial ->
+        repeat(retryConfig.maxRetries + 1) { trial ->
             try {
                 val answer =
-                    chatClient.prompt(Prompt(messages, options)).apply { tools?.forEach { this.tools(it) } }
-                        .apply {
-                            this.toolContext(
-                                (context?.plus(loadDefaultContext(timezone, receivedAt)) ?: loadDefaultContext(
-                                    timezone, receivedAt
-                                ))
-                            )
-                        }.let { prompt -> prompt.call().content()?.let { sanitize(it) } }
+                    chatClient.prompt(Prompt(messages, options))
+                        .apply { tools?.takeIf { it.isNotEmpty() }?.let { this.tools(it) } }
+                        .toolContext(
+                            (context?.plus(loadDefaultContext(timezone, receivedAt)) ?: loadDefaultContext(
+                                timezone, receivedAt
+                            ))
+                        ).let { prompt -> prompt.call().content()?.let { sanitize(it) } }
                 if (!answer.isNullOrBlank()) return answer
             } catch (e: Exception) {
                 if (retryConfig.failWithException && trial == retryConfig.maxRetries) throw e
@@ -55,10 +54,10 @@ class LlmClient(
         retryConfig: RetryConfig = RetryConfig(),
     ): String? {
         var options = ollamaOptions
-        repeat(retryConfig.maxRetries) { trial ->
+        repeat(retryConfig.maxRetries + 1) { trial ->
             try {
                 val prompt = chatClient.prompt(Prompt(messages, options))
-                tools?.let { prompt.tools(it) }
+                tools?.takeIf { it.isNotEmpty() }?.let { prompt.tools(it) }
                 val answer = prompt.toolContext(
                     (context?.plus(loadDefaultContext(timezone, receivedAt)) ?: loadDefaultContext(
                         timezone, receivedAt
