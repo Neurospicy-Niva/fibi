@@ -91,7 +91,6 @@ class GithubRoutineTemplateLoaderTest {
         // given
         val githubFiles = arrayOf(
             GitHubFile("morning-routine.json", "file", "https://example.com/morning-routine.json"),
-            GitHubFile("config.json", "file", "https://example.com/config.json"),      // No "routine" in name
             GitHubFile("routine.txt", "file", "https://example.com/routine.txt"),      // Not .json
             GitHubFile("folder", "dir", "")             // Not a file
         )

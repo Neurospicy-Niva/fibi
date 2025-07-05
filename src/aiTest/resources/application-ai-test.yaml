@@ -4,7 +4,7 @@ spring:
       username: fibiapp
       password: whydoesitalwaysRAINonme
       database: fibi
-      host: mongodb
+      host: mongodb.local.
       authentication-database: fibi
   ai:
     ollama:

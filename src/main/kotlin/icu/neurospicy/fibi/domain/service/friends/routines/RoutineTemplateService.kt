@@ -54,7 +54,7 @@ class RoutineTemplateService(
                 try {
                     routineTemplateLoader.parseRoutineTemplate(file.jsonContent)
                 } catch (e: Exception) {
-                    LOG.error("Failed to load routine template from URL $url: ${e.message}", e)
+                    LOG.error("Failed to load routine template ${file.filename} from URL $url: ${e.message}", e)
                     null
                 }
             }

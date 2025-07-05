@@ -27,4 +27,4 @@ app:
 github:
   routines:
     repository:
-      url: "https://api.github.com/repos/Neurospicy-Niva/routines/contents"
+      url: "https://api.github.com/repos/Neurospicy-Niva/routines/contents/examples?ref=main"

@@ -16,6 +16,7 @@ signal-cli:
   api-url: http://localhost:8081/api/v1
 logging:
   level:
+    root: DEBUG
     icu.neurospicy.fibi: INFO
 fibi:
   givenName: Fibi

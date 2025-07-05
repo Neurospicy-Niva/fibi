@@ -2,10 +2,8 @@ package icu.neurospicy.fibi.domain.service.friends.routines
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
-import icu.neurospicy.iso8601arithmetic.TemporalExpressionEvaluator
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import java.time.Duration
 import java.time.Instant
 import java.time.LocalTime
 
@@ -17,12 +15,11 @@ import java.time.LocalTime
 class RoutineTemplateLoader(
     private val objectMapper: ObjectMapper,
 ) {
-    
+
     companion object {
         private val LOG = LoggerFactory.getLogger(RoutineTemplateLoader::class.java)
-        private val temporalEvaluator = TemporalExpressionEvaluator()
     }
-    
+
     /**
      * Parse JSON string into RoutineTemplate
      */
@@ -35,19 +32,21 @@ class RoutineTemplateLoader(
             throw IllegalArgumentException("Invalid routine template JSON: ${e.message}", e)
         }
     }
-    
+
     /**
      * Parse JsonNode into RoutineTemplate
      */
     fun parseRoutineTemplate(json: JsonNode): RoutineTemplate {
         val title = json["title"]?.asText() ?: throw IllegalArgumentException("Missing required field: title")
         val version = json["version"]?.asText() ?: throw IllegalArgumentException("Missing required field: version")
-        val description = json["description"]?.asText() ?: throw IllegalArgumentException("Missing required field: description")
-        
+        val description =
+            json["description"]?.asText() ?: throw IllegalArgumentException("Missing required field: description")
+
         val setupSteps = json["setupSteps"]?.map { parseStep(it) } ?: emptyList()
-        val phases = json["phases"]?.map { parsePhase(it) } ?: throw IllegalArgumentException("Missing required field: phases")
+        val phases =
+            json["phases"]?.map { parsePhase(it) } ?: throw IllegalArgumentException("Missing required field: phases")
         val triggers = json["triggers"]?.map { parseTrigger(it) } ?: emptyList()
-        
+
         return RoutineTemplate(
             title = title,
             version = version,
@@ -57,22 +56,24 @@ class RoutineTemplateLoader(
             triggers = triggers
         )
     }
-    
+
     /**
      * Parse a step from JSON
      */
     fun parseStep(json: JsonNode): RoutineStep {
         val type = json["type"]?.asText() ?: throw IllegalArgumentException("Missing step type")
         val timeOfDay = json["timeOfDay"]?.asText()?.let { parseTimeOfDay(it) }
-        
+
         return when (type) {
             "parameter_request" -> {
-                val question = json["question"]?.asText() ?: throw IllegalArgumentException("Missing question for parameter_request")
-                val parameterKey = json["parameterKey"]?.asText() ?: throw IllegalArgumentException("Missing parameterKey")
-                val parameterType = json["parameterType"]?.asText()?.let { 
-                    RoutineParameterType.valueOf(it) 
+                val question = json["question"]?.asText()
+                    ?: throw IllegalArgumentException("Missing question for parameter_request")
+                val parameterKey =
+                    json["parameterKey"]?.asText() ?: throw IllegalArgumentException("Missing parameterKey")
+                val parameterType = json["parameterType"]?.asText()?.let {
+                    RoutineParameterType.valueOf(it)
                 } ?: throw IllegalArgumentException("Missing or invalid parameterType")
-                
+
                 ParameterRequestStep(
                     question = question,
                     parameterKey = parameterKey,
@@ -80,11 +81,13 @@ class RoutineTemplateLoader(
                     timeOfDay = timeOfDay
                 )
             }
+
             "action" -> {
-                val message = json["action"]?.asText() ?: json["message"]?.asText() ?: throw IllegalArgumentException("Missing message/action for action step")
+                val message = json["action"]?.asText() ?: json["message"]?.asText()
+                ?: throw IllegalArgumentException("Missing message/action for action step")
                 val expectConfirmation = json["expectConfirmation"]?.asBoolean() ?: false
                 val expectedDurationMinutes = json["expectedDurationMinutes"]?.asInt()
-                
+
                 ActionRoutineStep(
                     message = message,
                     expectConfirmation = expectConfirmation,
@@ -92,55 +95,37 @@ class RoutineTemplateLoader(
                     timeOfDay = timeOfDay
                 )
             }
+
             "message" -> {
-                val message = json["message"]?.asText() ?: throw IllegalArgumentException("Missing message for message step")
-                
+                val message =
+                    json["message"]?.asText() ?: throw IllegalArgumentException("Missing message for message step")
+
                 MessageRoutineStep(
                     message = message,
                     timeOfDay = timeOfDay
                 )
             }
+
             else -> throw IllegalArgumentException("Unknown step type: $type")
         }
     }
-    
+
     /**
      * Parse time of day from string
      */
     fun parseTimeOfDay(timeString: String): TimeOfDay {
-        return when {
-            // Complex expressions like "${wakeUpTime}+PT15M" or arithmetic
-            timeString.contains("+") || timeString.contains("-") || timeString.contains("\${") -> {
-                // Check if it's a simple parameter reference (for backward compatibility)
-                if (timeString.startsWith("\${") && timeString.endsWith("}") && !timeString.contains("+") && !timeString.contains("-")) {
-                    val parameterName = timeString.removePrefix("\${").removeSuffix("}")
-                    TimeOfDayReference(parameterName)
-                } else {
-                    // Complex expression - validate it can be parsed
-                    try {
-                        // Test parse with a dummy context to validate syntax
-                        val testContext = mapOf("testParam" to java.time.LocalDateTime.now())
-                        val testExpression = timeString.replace(Regex("\\$\\{[^}]+\\}"), "\${testParam}")
-                        temporalEvaluator.evaluate(testExpression, testContext)
-                        TimeOfDayExpression(timeString)
-                    } catch (e: Exception) {
-                        LOG.warn("Invalid time expression '$timeString', treating as reference: ${e.message}")
-                        TimeOfDayReference(timeString)
-                    }
-                }
-            }
-            else -> {
-                try {
-                    val time = LocalTime.parse(timeString)
-                    TimeOfDayLocalTime(time)
-                } catch (e: Exception) {
-                    // If it's not a valid LocalTime, treat it as a reference
-                    TimeOfDayReference(timeString)
-                }
-            }
+        try {
+            val time = LocalTime.parse(timeString)
+            return TimeOfDayLocalTime(time)
+        } catch (e: Exception) {
+        }
+        return Regex("^\\$\\{(\\w+)}$").find(timeString)?.let { matchResult ->
+            TimeOfDayReference(matchResult.groupValues.last())
+        } ?: run {
+            TimeOfDayExpression(expression = timeString)
         }
     }
-    
+
     /**
      * Parse a phase from JSON
      */
@@ -148,10 +133,10 @@ class RoutineTemplateLoader(
         val title = json["title"]?.asText() ?: throw IllegalArgumentException("Missing phase title")
         val steps = json["steps"]?.map { parseStep(it) } ?: throw IllegalArgumentException("Missing phase steps")
         val condition = json["condition"]?.let { parseTriggerCondition(it) }
-        val schedule = json["schedule"]?.asText()?.let { 
+        val schedule = json["schedule"]?.asText()?.let {
             ScheduleExpression.fromString(it)
         } ?: ScheduleExpression.DAILY
-        
+
         return RoutinePhase(
             title = title,
             steps = steps,
@@ -159,45 +144,62 @@ class RoutineTemplateLoader(
             schedule = schedule
         )
     }
-    
+
     /**
      * Parse trigger condition from JSON
      */
     fun parseTriggerCondition(json: JsonNode): TriggerCondition {
         val type = json["type"]?.asText() ?: throw IllegalArgumentException("Missing trigger condition type")
-        
+
         return when (type) {
             "AFTER_DAYS" -> {
                 val value = json["value"]?.asInt() ?: throw IllegalArgumentException("Missing value for AFTER_DAYS")
                 AfterDays(value)
             }
+
             "AFTER_PHASE_COMPLETIONS" -> {
-                val phaseTitle = json["phaseTitle"]?.asText() ?: throw IllegalArgumentException("Missing phaseTitle for AFTER_PHASE_COMPLETIONS")
-                val times = json["times"]?.asInt() ?: json["value"]?.asInt() ?: throw IllegalArgumentException("Missing times/value for AFTER_PHASE_COMPLETIONS")
+                val phaseTitle = json["phaseTitle"]?.asText()
+                    ?: throw IllegalArgumentException("Missing phaseTitle for AFTER_PHASE_COMPLETIONS")
+                val times = json["times"]?.asInt() ?: json["value"]?.asInt()
+                ?: throw IllegalArgumentException("Missing times/value for AFTER_PHASE_COMPLETIONS")
                 // Convert phaseTitle to phaseId
                 val phaseId = RoutinePhaseId.forTitle(phaseTitle)
                 AfterPhaseCompletions(phaseId, times)
             }
+
             "AT_TIME_EXPRESSION" -> {
-                val timeExpression = json["timeExpression"]?.asText() ?: json["expression"]?.asText() ?: throw IllegalArgumentException("Missing timeExpression for AT_TIME_EXPRESSION")
+                val timeExpression = json["timeExpression"]?.asText() ?: json["expression"]?.asText()
+                ?: throw IllegalArgumentException("Missing timeExpression for AT_TIME_EXPRESSION")
                 // duration parsing removed
                 // reference is now part of timeExpression
                 AtTimeExpression(timeExpression)
             }
+
             "AFTER_EVENT" -> {
-                val eventTypeString = json["eventType"]?.asText() ?: json["event"]?.asText() ?: throw IllegalArgumentException("Missing eventType/event for AFTER_EVENT")
+                val eventTypeString = json["eventType"]?.asText() ?: json["event"]?.asText()
+                ?: throw IllegalArgumentException("Missing eventType/event for AFTER_EVENT")
                 val eventType = RoutineAnchorEvent.valueOf(eventTypeString)
                 val phaseTitle = json["phaseTitle"]?.asText()
                 val timeExpression = json["timeExpression"]?.asText() ?: json["duration"]?.asText() ?: "PT0S"
                 // duration parsing removed
                 AfterEvent(eventType, phaseTitle, timeExpression)
             }
+
+            "PHASE_ENTERED" -> {
+                val phaseTitle = json["phaseTitle"]?.asText()
+                val timeExpression = json["timeExpression"]?.asText() ?: json["duration"]?.asText() ?: "PT0S"
+                AfterEvent(RoutineAnchorEvent.PHASE_ENTERED, phaseTitle, timeExpression)
+            }
+            
             "AFTER_PARAMETER_SET" -> {
-                val parameterKey = json["parameterKey"]?.asText() ?: throw IllegalArgumentException("Missing parameterKey for AFTER_PARAMETER_SET")
+                val parameterKey = json["parameterKey"]?.asText()
+                    ?: throw IllegalArgumentException("Missing parameterKey for AFTER_PARAMETER_SET")
                 AfterParameterSet(parameterKey)
             }
+
             "AFTER_DURATION" -> {
-                val durationStr = json["duration"]?.asText() ?: json["value"]?.asText() ?: throw IllegalArgumentException("Missing duration/value for AFTER_DURATION")
+                val durationStr = json["duration"]?.asText() ?: json["value"]?.asText()
+                ?: throw IllegalArgumentException("Missing duration/value for AFTER_DURATION")
                 val reference = json["reference"]?.asText()
                 if (reference != null) {
                     AfterDuration(reference, java.time.Duration.parse(durationStr))
@@ -205,38 +207,46 @@ class RoutineTemplateLoader(
                     AfterDuration(null, java.time.Duration.parse(durationStr))
                 }
             }
+
             else -> throw IllegalArgumentException("Unknown trigger condition type: $type")
         }
     }
-    
+
     /**
      * Parse a trigger from JSON
      */
     fun parseTrigger(json: JsonNode): RoutineTrigger {
-        val condition = parseTriggerCondition(json["condition"] ?: throw IllegalArgumentException("Missing trigger condition"))
+        val condition =
+            parseTriggerCondition(json["condition"] ?: throw IllegalArgumentException("Missing trigger condition"))
         val effect = parseTriggerEffect(json["effect"] ?: throw IllegalArgumentException("Missing trigger effect"))
-        
+
         return RoutineTrigger(condition = condition, effect = effect)
     }
-    
+
     /**
      * Parse trigger effect from JSON
      */
     fun parseTriggerEffect(json: JsonNode): TriggerEffect {
         val type = json["type"]?.asText() ?: throw IllegalArgumentException("Missing trigger effect type")
-        
+
         return when (type) {
             "SEND_MESSAGE" -> {
-                val message = json["message"]?.asText() ?: throw IllegalArgumentException("Missing message for SEND_MESSAGE")
+                val message =
+                    json["message"]?.asText() ?: throw IllegalArgumentException("Missing message for SEND_MESSAGE")
                 SendMessage(message)
             }
+
             "CREATE_TASK" -> {
-                val taskDescription = json["taskDescription"]?.asText() ?: throw IllegalArgumentException("Missing taskDescription for CREATE_TASK")
-                val parameterKey = json["parameterKey"]?.asText() ?: throw IllegalArgumentException("Missing parameterKey for CREATE_TASK")
-                val expiryDateString = json["expiryDate"]?.asText() ?: throw IllegalArgumentException("Missing expiryDate for CREATE_TASK")
+                val taskDescription = json["taskDescription"]?.asText()
+                    ?: throw IllegalArgumentException("Missing taskDescription for CREATE_TASK")
+                val parameterKey = json["parameterKey"]?.asText()
+                    ?: throw IllegalArgumentException("Missing parameterKey for CREATE_TASK")
+                val expiryDateString =
+                    json["expiryDate"]?.asText() ?: throw IllegalArgumentException("Missing expiryDate for CREATE_TASK")
                 val expiryDate = Instant.parse(expiryDateString)
                 CreateTask(taskDescription, parameterKey, expiryDate)
             }
+
             else -> throw IllegalArgumentException("Unknown trigger effect type: $type")
         }
     }

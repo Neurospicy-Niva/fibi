@@ -14,7 +14,7 @@ import java.time.Instant
 data class AppointmentReminder(
     @Id val _id: String? = null,
     val owner: FriendshipId,
-    val matchingTitleKeywords: Set<String>,
+    val matchingTitleKeywords: Set<String> = emptySet(),
     val text: String,
     val offset: Duration = Duration.ofMinutes(15),
     val remindBeforeAppointment: Boolean = true,
