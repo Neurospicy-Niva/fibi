@@ -35,7 +35,7 @@ class GithubRoutineTemplateLoader(
             files.filter { it.isRoutineFile() }
                 .mapNotNull { file ->
                     try {
-                        val jsonContent = loadFromUrl(file.downloadUrl)
+                        val jsonContent = loadFromUrl(file.downloadUrl!!)
                         if (jsonContent != null) {
                             RoutineFile(file.name, jsonContent)
                         } else {
@@ -94,13 +94,13 @@ data class GitHubFile(
     val name: String,
     val type: String,
     @JsonProperty("download_url")
-    val downloadUrl: String,
+    val downloadUrl: String?,
 ) {
     @JsonIgnore
     fun isRoutineFile(): Boolean {
         return type == "file" &&
-                name.endsWith(".json") &&
-                name.contains("routine", ignoreCase = true)
+                downloadUrl != null &&
+                name.endsWith(".json")
     }
 }
 
