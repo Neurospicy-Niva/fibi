@@ -79,7 +79,7 @@ sealed class ScheduleExpression(val cronExpression: String) {
     object WEEKLY : ScheduleExpression("0 0 * * MON")
     object WEEKDAYS : ScheduleExpression("0 0 * * MON-FRI")
     object WEEKENDS : ScheduleExpression("0 0 * * SAT,SUN")
-    
+
     // Individual weekdays
     object MONDAY : ScheduleExpression("0 0 * * MON")
     object TUESDAY : ScheduleExpression("0 0 * * TUE")
@@ -88,18 +88,18 @@ sealed class ScheduleExpression(val cronExpression: String) {
     object FRIDAY : ScheduleExpression("0 0 * * FRI")
     object SATURDAY : ScheduleExpression("0 0 * * SAT")
     object SUNDAY : ScheduleExpression("0 0 * * SUN")
-    
+
     data class Custom(val cron: String) : ScheduleExpression(cron) {
         init {
             require(isValidCron(cron)) { "Invalid cron expression: '$cron'. Expected format: 'sec min hour day month dayOfWeek'" }
         }
-        
+
         companion object {
             private fun isValidCron(cron: String): Boolean {
                 // Basic cron validation - 6 parts (including seconds) or 5 parts
                 val parts = cron.trim().split("\\s+".toRegex())
                 if (parts.size !in 5..6) return false
-                
+
                 // More sophisticated validation could be added here
                 // For now, just check basic structure - allow numbers, *, -, /, commas, and day names
                 return parts.all { part ->
@@ -108,7 +108,7 @@ sealed class ScheduleExpression(val cronExpression: String) {
             }
         }
     }
-    
+
     companion object {
         /**
          * Creates a ScheduleExpression from a string (for backward compatibility)
@@ -166,6 +166,7 @@ data class ParameterRequestStep(
         require(parameterKey.isNotBlank()) { "Parameter key must not be blank" }
         require(description.isNotBlank()) { "Description must not be blank" }
     }
+
     companion object {
         @JvmStatic
         fun setupParameterRequest(parameterKey: String, parameterType: RoutineParameterType, description: String) =
@@ -229,7 +230,10 @@ data class TimeOfDayReference(val reference: String) : TimeOfDay {
  * Represents a time expression that can contain parameter substitution and arithmetic operations.
  * Examples: "${wakeUpTime}+PT15M", "${startTime}-PT30M", "09:00+PT1H"
  */
-data class TimeOfDayExpression(val expression: String) : TimeOfDay {
+data class TimeOfDayExpression(
+    val expression: String,
+    val parameters: List<String> = Regex("\\$\\{(\\w+)}").find(expression)?.groupValues ?: emptyList(),
+) : TimeOfDay {
     init {
         require(expression.isNotBlank()) { "Expression must not be blank" }
     }
@@ -243,7 +247,7 @@ enum class RoutineParameterType {
     FLOAT,
     DATE,
     INSTANT;
-    
+
     /**
      * Validates and converts a string value to the appropriate type
      */
@@ -255,26 +259,31 @@ enum class RoutineParameterType {
             } catch (e: Exception) {
                 throw IllegalArgumentException("Invalid time format: '$value'. Expected format: HH:mm or HH:mm:ss")
             }
+
             BOOLEAN -> when (value.lowercase().trim()) {
                 "true", "yes", "y", "1", "on" -> true
                 "false", "no", "n", "0", "off" -> false
                 else -> throw IllegalArgumentException("Invalid boolean value: '$value'. Expected: true/false, yes/no, y/n, 1/0, on/off")
             }
+
             INT -> try {
                 value.toInt()
             } catch (e: NumberFormatException) {
                 throw IllegalArgumentException("Invalid integer value: '$value'")
             }
+
             FLOAT -> try {
                 value.toFloat()
             } catch (e: NumberFormatException) {
                 throw IllegalArgumentException("Invalid float value: '$value'")
             }
+
             DATE -> try {
                 LocalDate.parse(value)
             } catch (e: Exception) {
                 throw IllegalArgumentException("Invalid date format: '$value'. Expected format: yyyy-MM-dd")
             }
+
             INSTANT -> try {
                 Instant.parse(value)
             } catch (e: Exception) {
@@ -282,7 +291,7 @@ enum class RoutineParameterType {
             }
         }
     }
-    
+
     /**
      * Gets a human-readable description of the expected format
      */
@@ -304,7 +313,7 @@ enum class RoutineParameterType {
  */
 data class TypedParameter(
     val value: Any,
-    val type: RoutineParameterType
+    val type: RoutineParameterType,
 ) {
     companion object {
         /**
@@ -314,7 +323,7 @@ data class TypedParameter(
             val parsedValue = expectedType.parseAndValidate(stringValue)
             return TypedParameter(parsedValue, expectedType)
         }
-        
+
         /**
          * Creates a TypedParameter from a raw value (inferring type)
          */
@@ -333,7 +342,7 @@ data class TypedParameter(
             return TypedParameter(if (value is Double) value.toFloat() else value, type)
         }
     }
-    
+
     /**
      * Gets the value as the expected type (with type safety)
      * String access always works by converting to string representation
@@ -345,30 +354,36 @@ data class TypedParameter(
                 require(type == RoutineParameterType.LOCAL_TIME) { "Parameter type is $type, not LOCAL_TIME" }
                 value as T
             }
+
             Boolean::class -> {
                 require(type == RoutineParameterType.BOOLEAN) { "Parameter type is $type, not BOOLEAN" }
                 value as T
             }
+
             Int::class -> {
                 require(type == RoutineParameterType.INT) { "Parameter type is $type, not INT" }
                 value as T
             }
+
             Float::class -> {
                 require(type == RoutineParameterType.FLOAT) { "Parameter type is $type, not FLOAT" }
                 value as T
             }
+
             LocalDate::class -> {
                 require(type == RoutineParameterType.DATE) { "Parameter type is $type, not DATE" }
                 value as T
             }
+
             Instant::class -> {
                 require(type == RoutineParameterType.INSTANT) { "Parameter type is $type, not INSTANT" }
                 value as T
             }
+
             else -> throw IllegalArgumentException("Unsupported type: ${T::class}")
         }
     }
-    
+
     /**
      * Gets the string representation of the value
      */
@@ -404,7 +419,7 @@ data class AfterDays(
 
 /**
  * Trigger condition that fires after a specified duration from a reference point.
- * 
+ *
  * @param reference The parameter key to use as reference point (optional)
  * @param duration The duration to wait after the reference point
  */
@@ -419,10 +434,10 @@ data class AfterDuration(
 
 /**
  * Trigger condition that fires at a specific time calculated from a time expression.
- * 
+ *
  * Examples:
  * - "${wakeUpTime}+PT2H" - 2 hours after wake up time
- * - "${bedTime}-PT1H" - 1 hour before bed time  
+ * - "${bedTime}-PT1H" - 1 hour before bed time
  * - "${ROUTINE_START}+PT30M" - 30 minutes after routine started
  * - "${NOW}+PT45M" - 45 minutes from now
  * - "07:30" - at 7:30 AM today (or tomorrow if past)
@@ -434,6 +449,7 @@ data class AtTimeExpression(
         require(timeExpression.isNotBlank()) { "Time expression must not be blank" }
     }
 }
+
 data class AfterEvent(
     val eventType: RoutineAnchorEvent,
     val phaseTitle: String? = null,
@@ -517,17 +533,31 @@ data class RoutineInstance(
     fun withCurrentPhase(phaseId: RoutinePhaseId): RoutineInstance =
         this.copy(
             currentPhaseId = phaseId,
-            progress = progress.copy(iterations = listOf(PhaseIterationProgress(phaseId, Instant.now())) + progress.iterations)
+            progress = progress.copy(
+                iterations = listOf(
+                    PhaseIterationProgress(
+                        phaseId,
+                        Instant.now()
+                    )
+                ) + progress.iterations
+            )
         )
-    
+
     /**
      * Starts a new iteration of the current phase
      */
     fun withNewIteration(phaseId: RoutinePhaseId): RoutineInstance =
         this.copy(
-            progress = progress.copy(iterations = listOf(PhaseIterationProgress(phaseId, Instant.now())) + progress.iterations)
+            progress = progress.copy(
+                iterations = listOf(
+                    PhaseIterationProgress(
+                        phaseId,
+                        Instant.now()
+                    )
+                ) + progress.iterations
+            )
         )
-    
+
     /**
      * Sets a parameter with type validation
      */
@@ -535,7 +565,7 @@ data class RoutineInstance(
         val typedParameter = TypedParameter.fromString(value, expectedType)
         return this.copy(parameters = parameters + (key to typedParameter))
     }
-    
+
     /**
      * Sets a parameter from a raw value (inferring type)
      */
@@ -543,21 +573,21 @@ data class RoutineInstance(
         val typedParameter = TypedParameter.fromValue(value)
         return this.copy(parameters = parameters + (key to typedParameter))
     }
-    
+
     /**
      * Gets a parameter value as a specific type
      */
     inline fun <reified T> getParameter(key: String): T? {
         return parameters[key]?.getAs<T>()
     }
-    
+
     /**
      * Gets a parameter value as a string (always works)
      */
     fun getParameterAsString(key: String): String? {
         return parameters[key]?.getAsString()
     }
-    
+
     /**
      * Checks if a parameter exists and has the expected type
      */
