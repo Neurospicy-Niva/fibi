@@ -89,7 +89,7 @@ Appointment reminders:
  
 Output must be a JSON object like this:
  {
-    "interactionType": One of `Set`, `Update`, `Remove` or `List`, optional,
+    "interactionType": One of `Set`, `Update`, `Remove` or `List`,
     "kind": `TimeBased`, 'Appointment`, `Timer`, `General`
  }
                 """.trimIndent()
