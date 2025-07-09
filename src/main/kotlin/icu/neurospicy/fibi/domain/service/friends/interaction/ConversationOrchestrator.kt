@@ -44,6 +44,12 @@ class ConversationOrchestrator(
                 val response = goalRefiner.handleClarification(event.friendshipId, goalContext, message)
                 if (response.clarified()) {
                     clarifiedIntent = response.intent
+                    // Update context immediately to clear pending clarification
+                    goalContext = goalContext.copy(
+                        goalClarificationQuestion = null,
+                        lastUpdated = Instant.now()
+                    )
+                    contextRepository.saveContext(event.friendshipId, goalContext)
                 } else {
                     contextRepository.saveContext(
                         event.friendshipId, goalContext.copy(
@@ -74,13 +80,17 @@ Make it easy and friendly to answer.""")
         } else {
             // Either no goal or conversation is outdated
             conversationContextService.startNewConversation(event.friendshipId, CoreIntents.Unknown, message)
+            goalContext = null
         }
 
-        // Step 2: Classify intent
-        val intents =
+        // Step 2: Classify intent (skip if we have a clarified intent)
+        val intents = if (clarifiedIntent != null) {
+            LOG.info("Using clarified intent: $clarifiedIntent, skipping intent classification")
+            listOf(IntentClassifier.IntentClassification(clarifiedIntent, 1f))
+        } else {
             conversationRepository.findByFriendshipId(event.friendshipId)?.let { intentClassifier.classifyIntent(it) }
                 ?: intentClassifier.classifyIntent(event)
-                    .plus(clarifiedIntent?.let { IntentClassifier.IntentClassification(it, 1f) }).filterNotNull()
+        }
         LOG.info("Primary intents {}", intents.filterNot { it.confidence < 0.75 })
         val primaryIntent = intents.maxByOrNull { it.confidence }?.intent ?: CoreIntents.Unknown
         if (primaryIntent == CoreIntents.Smalltalk || primaryIntent == CoreIntents.Unknown) {
