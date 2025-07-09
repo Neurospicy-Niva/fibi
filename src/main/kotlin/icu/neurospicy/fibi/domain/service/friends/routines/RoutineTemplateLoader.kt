@@ -180,17 +180,17 @@ class RoutineTemplateLoader(
                 ?: throw IllegalArgumentException("Missing eventType/event for AFTER_EVENT")
                 val eventType = RoutineAnchorEvent.valueOf(eventTypeString)
                 val phaseTitle = json["phaseTitle"]?.asText()
-                val timeExpression = json["timeExpression"]?.asText() ?: json["duration"]?.asText() ?: "PT0S"
+                val timeExpression = json["timeExpression"]?.asText() ?: json["duration"]?.asText()
                 // duration parsing removed
                 AfterEvent(eventType, phaseTitle, timeExpression)
             }
 
             "PHASE_ENTERED" -> {
                 val phaseTitle = json["phaseTitle"]?.asText()
-                val timeExpression = json["timeExpression"]?.asText() ?: json["duration"]?.asText() ?: "PT0S"
+                val timeExpression = json["timeExpression"]?.asText() ?: json["duration"]?.asText()
                 AfterEvent(RoutineAnchorEvent.PHASE_ENTERED, phaseTitle, timeExpression)
             }
-            
+
             "AFTER_PARAMETER_SET" -> {
                 val parameterKey = json["parameterKey"]?.asText()
                     ?: throw IllegalArgumentException("Missing parameterKey for AFTER_PARAMETER_SET")

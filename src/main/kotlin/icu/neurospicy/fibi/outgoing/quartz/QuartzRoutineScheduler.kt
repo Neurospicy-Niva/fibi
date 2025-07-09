@@ -51,17 +51,18 @@ class QuartzRoutineScheduler(
                 }
                 baseTime.plus(condition.duration)
             }
+
             is AtTimeExpression -> {
                 timeExpressionEvaluator.evaluateAtTimeExpression(condition.timeExpression, result, zoneId)
                     ?.atZone(zoneId) ?: return
             }
 
             is AfterEvent -> {
-                timeExpressionEvaluator.evaluateAtTimeExpression(condition.timeExpression, result, zoneId)
-                    ?.atZone(zoneId) ?: return
+                condition.timeExpression?.let {
+                    timeExpressionEvaluator.evaluateAtTimeExpression(condition.timeExpression, result, zoneId)
+                        ?.atZone(zoneId) ?: return
+                } ?: ZonedDateTime.now(zoneId)
             }
-
-            else -> return
         }
 
         val payload = mapOf(
@@ -198,8 +199,11 @@ class QuartzRoutineScheduler(
             }
 
             is AfterEvent -> {
-                timeExpressionEvaluator.evaluateAtTimeExpression(condition.timeExpression, instance, zoneId)
-                    ?.atZone(zoneId) ?: return
+                condition.timeExpression?.let {
+                    timeExpressionEvaluator.evaluateAtTimeExpression(
+                        condition.timeExpression, instance, zoneId
+                    )?.atZone(zoneId) ?: return
+                } ?: ZonedDateTime.now(zoneId)
             }
 
             else -> return // No time specified; nothing to schedule
@@ -233,8 +237,7 @@ class QuartzRoutineScheduler(
                 event = RoutineEventType.PHASE_SCHEDULED,
                 timestamp = Instant.now(),
                 metadata = mapOf(
-                    "phaseId" to phase.id.toString(),
-                    "scheduledAt" to triggerTime.toInstant()
+                    "phaseId" to phase.id.toString(), "scheduledAt" to triggerTime.toInstant()
                 )
             )
         )
@@ -249,11 +252,7 @@ class QuartzRoutineScheduler(
         val cronExpression = phase.schedule.cronExpression
         val jobKeyStr = "routine-phase-iteration-${instance.friendshipId}-${instance.instanceId}-${phase.id}"
         quartzSchedulerService.scheduleJob(
-            jobKeyStr,
-            GROUP_ROUTINE_JOBS_KEY,
-            RoutinePhaseIterationSchedulerJob::class.java,
-            payload,
-            cronExpression
+            jobKeyStr, GROUP_ROUTINE_JOBS_KEY, RoutinePhaseIterationSchedulerJob::class.java, payload, cronExpression
         )
         LOG.info("Scheduled phase iterations ${phase.id} for routine ${instance.instanceId} with cron $cronExpression")
         eventPublisher.publishEvent(
@@ -268,8 +267,7 @@ class QuartzRoutineScheduler(
                 event = RoutineEventType.PHASE_ITERATIONS_SCHEDULED,
                 timestamp = Instant.now(),
                 metadata = mapOf(
-                    "phaseId" to phase.id.toString(),
-                    "scheduledAt" to phase.schedule.cronExpression
+                    "phaseId" to phase.id.toString(), "scheduledAt" to phase.schedule.cronExpression
                 )
             )
         )

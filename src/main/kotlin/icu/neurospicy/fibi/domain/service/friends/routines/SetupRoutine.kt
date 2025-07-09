@@ -3,8 +3,10 @@ package icu.neurospicy.fibi.domain.service.friends.routines
 import icu.neurospicy.fibi.domain.model.FriendshipId
 import icu.neurospicy.fibi.domain.service.friends.routines.events.RoutineStarted
 import org.springframework.context.ApplicationEventPublisher
+import org.springframework.stereotype.Service
 import java.util.*
 
+@Service
 class SetupRoutine(
     private val templates: RoutineTemplateRepository,
     private val instances: RoutineRepository,

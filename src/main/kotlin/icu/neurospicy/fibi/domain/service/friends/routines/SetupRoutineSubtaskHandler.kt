@@ -3,10 +3,12 @@ package icu.neurospicy.fibi.domain.service.friends.routines
 import icu.neurospicy.fibi.domain.model.FriendshipId
 import icu.neurospicy.fibi.domain.model.UserMessage
 import icu.neurospicy.fibi.domain.service.friends.interaction.*
+import org.springframework.stereotype.Component
 
 /**
  * Handles interaction for setting up a new routine. Thus, asks for the routine, for all needed parameters and triggers SetupRoutine to do the magic.
  */
+@Component
 class SetupRoutineSubtaskHandler(
     private val templateRepository: RoutineTemplateRepository,
     private val setupRoutine: SetupRoutine,

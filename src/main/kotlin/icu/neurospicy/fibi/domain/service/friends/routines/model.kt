@@ -75,19 +75,19 @@ data class RoutinePhase(
 }
 
 sealed class ScheduleExpression(val cronExpression: String) {
-    object DAILY : ScheduleExpression("0 0 * * *")
-    object WEEKLY : ScheduleExpression("0 0 * * MON")
-    object WEEKDAYS : ScheduleExpression("0 0 * * MON-FRI")
-    object WEEKENDS : ScheduleExpression("0 0 * * SAT,SUN")
+    object DAILY : ScheduleExpression("0 0 0 ? * *")
+    object WEEKLY : ScheduleExpression("0 0 0 ? * MON")
+    object WEEKDAYS : ScheduleExpression("0 0 0 ? * MON-FRI")
+    object WEEKENDS : ScheduleExpression("0 0 0 ? * SAT,SUN")
 
     // Individual weekdays
-    object MONDAY : ScheduleExpression("0 0 * * MON")
-    object TUESDAY : ScheduleExpression("0 0 * * TUE")
-    object WEDNESDAY : ScheduleExpression("0 0 * * WED")
-    object THURSDAY : ScheduleExpression("0 0 * * THU")
-    object FRIDAY : ScheduleExpression("0 0 * * FRI")
-    object SATURDAY : ScheduleExpression("0 0 * * SAT")
-    object SUNDAY : ScheduleExpression("0 0 * * SUN")
+    object MONDAY : ScheduleExpression("0 0 0 ? * MON")
+    object TUESDAY : ScheduleExpression("0 0 0 ? * TUE")
+    object WEDNESDAY : ScheduleExpression("0 0 0 ? * WED")
+    object THURSDAY : ScheduleExpression("0 0 0 ? * THU")
+    object FRIDAY : ScheduleExpression("0 0 0 ? * FRI")
+    object SATURDAY : ScheduleExpression("0 0 0 ? * SAT")
+    object SUNDAY : ScheduleExpression("0 0 0 ? * SUN")
 
     data class Custom(val cron: String) : ScheduleExpression(cron) {
         init {
@@ -98,12 +98,12 @@ sealed class ScheduleExpression(val cronExpression: String) {
             private fun isValidCron(cron: String): Boolean {
                 // Basic cron validation - 6 parts (including seconds) or 5 parts
                 val parts = cron.trim().split("\\s+".toRegex())
-                if (parts.size !in 5..6) return false
+                if (parts.size != 6) return false
 
                 // More sophisticated validation could be added here
                 // For now, just check basic structure - allow numbers, *, -, /, commas, and day names
                 return parts.all { part ->
-                    part.matches("""[0-9*,\-/]+|[A-Z]{3}([,-][A-Z]{3})*""".toRegex())
+                    part.matches("""[0-9*,\-/?]+|[A-Z]{3}([,-][A-Z]{3})*""".toRegex())
                 }
             }
         }
@@ -453,10 +453,10 @@ data class AtTimeExpression(
 data class AfterEvent(
     val eventType: RoutineAnchorEvent,
     val phaseTitle: String? = null,
-    val timeExpression: String = "PT0S",
+    val timeExpression: String? = null,
 ) : TimeBasedTriggerCondition {
     init {
-        timeExpression.let { require(it.isNotBlank()) { "Time expression must not be blank" } }
+        timeExpression?.let { require(it.isNotBlank()) { "Time expression must not be blank" } }
         phaseTitle?.let { require(it.isNotBlank()) { "Phase title must not be blank if provided" } }
     }
 }
