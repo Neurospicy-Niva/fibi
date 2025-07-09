@@ -134,7 +134,7 @@ class IntentClassifierAIT : BaseAIT() {
             IntentTestCase("I want to add a new calendar", setOf(CalendarIntents.Register)),
             IntentTestCase("Register calendar", setOf(CalendarIntents.Register)),
             IntentTestCase("Remove my \"Dog\" calendar", setOf(CalendarIntents.Remove)),
-            IntentTestCase("Which calendars do I have connected?", setOf(CalendarIntents.Show)),
+            IntentTestCase("Which calendars do I have connected?", setOf(CalendarIntents.ListAppointments)),
 
             // Additional intent test cases
             IntentTestCase("Tell me a joke.", setOf(CoreIntents.Smalltalk)),
@@ -146,11 +146,11 @@ class IntentClassifierAIT : BaseAIT() {
     }
 
     data class IntentTestCase(
-        val message: String, val expectedIntents: Set<Intent>
+        val message: String, val expectedIntents: Set<Intent>,
     )
 
     data class ConversationTestCase(
-        val conversation: Conversation, val expectedIntents: Set<Intent>
+        val conversation: Conversation, val expectedIntents: Set<Intent>,
     )
 
     private fun incomingFriendMessageReceived(message: String): IncomingFriendMessageReceived =

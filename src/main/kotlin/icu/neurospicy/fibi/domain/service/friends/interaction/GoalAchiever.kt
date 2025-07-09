@@ -49,27 +49,28 @@ class GoalAchiever(
         }
 
         val responseGenerationPrompts = subtaskResults.mapNotNull { it.successMessageGenerationPrompt }.toList()
+        val contextWithAddedParameters = context.copy(
+            parameters = if (subtaskResults.all { it.updatedContextParameters.isEmpty() }) context.parameters else context.parameters.plus(
+                subtaskResults.map { it.updatedContextParameters }
+                    .reduce { acc, list -> acc + list })
+        )
         return when {
             subtaskResults.mapNotNull { it.subtaskClarificationQuestion }.toList()
                 .isNotEmpty() -> GoalAdvancementResult.subtaskNeedsClarification(
-                context.copy(
-                    parameters = context.parameters.plus(subtaskResults.map { it.updatedContextParameters }
-                        .reduce { acc, list -> acc + list })
-                ),
+                contextWithAddedParameters,
                 subtaskResults.map { it.updatedSubtask }.toList(),
                 subtaskResults.mapNotNull { it.subtaskClarificationQuestion }.toList(),
                 responseGenerationPrompts
             )
 
             subtaskResults.all { it.updatedSubtask.completed() } -> GoalAdvancementResult.completed(
-                context, subtaskResults.map { it.updatedSubtask }.toList(), responseGenerationPrompts
-            )
+                contextWithAddedParameters,
+                subtaskResults.map { it.updatedSubtask }.toList(), responseGenerationPrompts,
+
+                )
 
             else -> GoalAdvancementResult.ongoing(
-                context.copy(
-                    parameters = context.parameters.plus(subtaskResults.map { it.updatedContextParameters }
-                        .reduce { acc, list -> acc + list })
-                ), subtaskResults.map { it.updatedSubtask }.toList(), responseGenerationPrompts
+                contextWithAddedParameters, subtaskResults.map { it.updatedSubtask }.toList(), responseGenerationPrompts
             )
         }
     }

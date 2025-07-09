@@ -246,7 +246,6 @@ class SelectRoutineSubtaskHandlerAIT : BaseAIT() {
         title = title, version = "1.0", description = description, phases = listOf(
             RoutinePhase(
                 title = firstPhaseTitle,
-                condition = AfterDays(0),
                 steps = listOf(ActionRoutineStep(message = firstPhaseTitle))
             )
         )

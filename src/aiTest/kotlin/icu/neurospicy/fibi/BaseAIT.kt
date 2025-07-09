@@ -1,14 +1,15 @@
 package icu.neurospicy.fibi
 
+// import io.mockk.impl.annotations.SpyK
+// import io.mockk.junit5.MockKExtension
+
+import com.ninjasquad.springmockk.SpykBean
 import icu.neurospicy.fibi.domain.model.AcceptedAgreement
 import icu.neurospicy.fibi.domain.model.FriendshipId
 import icu.neurospicy.fibi.domain.model.SignalId
 import icu.neurospicy.fibi.domain.repository.*
-import io.mockk.impl.annotations.SpyK
-import io.mockk.junit5.MockKExtension
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.ApplicationEventPublisher
@@ -20,11 +21,9 @@ import java.util.*
 
 @SpringBootTest(classes = [TestFibiApplication::class])
 @ActiveProfiles("ai-test")
-@ExtendWith(MockKExtension::class)
 class BaseAIT {
 
     @Autowired
-    @SpyK
     internal lateinit var eventPublisher: ApplicationEventPublisher
 
     @Autowired
@@ -39,8 +38,7 @@ class BaseAIT {
     @Autowired
     lateinit var conversationRepository: ConversationRepository
 
-    @Autowired
-    @SpyK
+    @SpykBean
     lateinit var calendarRepository: CalendarRepository
 
     var friendshipId: FriendshipId = FriendshipId()
@@ -49,7 +47,7 @@ class BaseAIT {
     internal fun setUp() {
         // Ensure shared containers are initialized before each test
         SharedTestContainers.initialize()
-        
+
         val ledgerEntry = friendshipLedger.addEntry(SignalId(UUID.randomUUID()), "Jane", "+0000123456789")
         friendshipId = ledgerEntry.friendshipId
         friendshipLedger.acceptTermsOfUse(friendshipId, AcceptedAgreement("TOS 1.2", now(), "Yes."))

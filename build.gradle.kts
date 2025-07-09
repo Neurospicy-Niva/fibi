@@ -49,6 +49,7 @@ dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testImplementation("org.springframework.ai:spring-ai-spring-boot-testcontainers")
     testImplementation("io.mockk:mockk:1.14.4")
+    testImplementation("com.ninja-squad:springmockk:4.0.2")
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("org.testcontainers:mongodb")
     testImplementation("org.testcontainers:ollama")
