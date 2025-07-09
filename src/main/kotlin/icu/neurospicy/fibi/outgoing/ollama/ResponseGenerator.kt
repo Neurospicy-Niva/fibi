@@ -28,9 +28,9 @@ class ResponseGenerator(
     private val taskRepository: TaskRepository,
     private val conversationRepository: ConversationRepository,
     private val calendarConfigurationRepository: CalendarConfigurationRepository,
-    private val promptsConfiguration: PromptsConfiguration
+    private val promptsConfiguration: PromptsConfiguration,
 
-) {
+    ) {
     suspend fun generateResponseWith(
         friendshipId: FriendshipId,
         message: OutgoingGeneratedMessage,
@@ -51,13 +51,13 @@ class ResponseGenerator(
     }
 
     private suspend fun generateMessageWithRetries(
-        friendshipId: FriendshipId, message: OutgoingMessageNeedsGenerator, requestId: MessageId?
+        friendshipId: FriendshipId, message: OutgoingMessageNeedsGenerator, requestId: MessageId?,
     ): String {
         return generateMessage(friendshipId, message, requestId) ?: throw Exception("Failed hard to generate message")
     }
 
     private suspend fun generateMessage(
-        friendshipId: FriendshipId, message: OutgoingMessageNeedsGenerator, requestId: MessageId?
+        friendshipId: FriendshipId, message: OutgoingMessageNeedsGenerator, requestId: MessageId?,
     ): String? {
         val friendshipLedgerEntry = friendshipLedger.findBy(friendshipId)
         val zone = friendshipLedgerEntry?.timeZone ?: UTC
@@ -74,19 +74,26 @@ class ResponseGenerator(
         )
 
         val tools = createListOfTools(message, friendshipId)
-        val response = llmClient.promptReceivingText(
-            createMessagePrompt(
-                when (message) {
-                    is OutgoingGeneratedMessage -> createDescriptionForMessage(message)
-                    is OutgoingAdaptedTextMessage -> createDescriptionForMessage(message)
-                }, friendshipId, name, sendingTimeAtUserZone, messageRespondingTo, message.useHistory
-            ),
-            OllamaOptions.builder().model(DEFAULT_MODEL).temperature(0.3).build(),
-            zone,
-            chatRepository.find(friendshipId, message.messageId).takeIf { it is UserMessage }
-                ?.let { it as UserMessage }?.receivedAt ?: Instant.now(),
-            tools = tools
-        )
+        val response = try {
+            llmClient.promptReceivingText(
+                createMessagePrompt(
+                    when (message) {
+                        is OutgoingGeneratedMessage -> createDescriptionForMessage(message)
+                        is OutgoingAdaptedTextMessage -> createDescriptionForMessage(message)
+                    }, friendshipId, name, sendingTimeAtUserZone, messageRespondingTo, message.useHistory
+                ),
+                OllamaOptions.builder().model(DEFAULT_MODEL).temperature(0.3).build(),
+                zone,
+                chatRepository.find(friendshipId, message.messageId).takeIf { it is UserMessage }
+                    ?.let { it as UserMessage }?.receivedAt ?: Instant.now(),
+                tools = tools,
+                retryConfig = RetryConfig(maxRetries = 3, failWithException = true)
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+            LOG.error("Failed generating response for message '{}'. Error: {}", message, e.message)
+            null
+        }
 
         applicationEventPublisher.publishEvent(
             MessageGenerationFinished(
@@ -98,7 +105,7 @@ class ResponseGenerator(
     }
 
     private fun createListOfTools(
-        message: OutgoingMessageNeedsGenerator, friendshipId: FriendshipId
+        message: OutgoingMessageNeedsGenerator, friendshipId: FriendshipId,
     ): MutableSet<Any> = mutableSetOf<Any>().apply {
         if (message.useRetrievalTools) plus(
             listOf(
@@ -121,7 +128,7 @@ class ResponseGenerator(
         name: String?,
         sendingTimeAtUserZone: ZonedDateTime,
         messageRespondingTo: UserMessage?,
-        useHistory: Boolean
+        useHistory: Boolean,
     ): List<Message> {
         return (conversationRepository.findByFriendshipId(friendshipId)?.messages?.map { it.toLlmMessage() }
             .takeIf { useHistory } ?: emptyList()).plus(
@@ -154,7 +161,7 @@ class ResponseGenerator(
     }
 
     private fun fibiSystemMessage(
-        name: String?, zonedDateTime: ZonedDateTime, messageRespondingTo: UserMessage?
+        name: String?, zonedDateTime: ZonedDateTime, messageRespondingTo: UserMessage?,
     ): String {
         return promptsConfiguration.fibiSystemPromptTemplate.replace("\${zonedDateTime}", zonedDateTime.toString())
             .replace(
