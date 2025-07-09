@@ -7,8 +7,6 @@ import icu.neurospicy.fibi.application.routine.RoutineTriggerSchedulerJob
 import icu.neurospicy.fibi.domain.model.FriendshipId
 import icu.neurospicy.fibi.domain.repository.FriendshipLedger
 import icu.neurospicy.fibi.domain.service.friends.routines.*
-import icu.neurospicy.fibi.domain.service.friends.routines.builders.aMessageStep
-import icu.neurospicy.fibi.domain.service.friends.routines.events.RoutinePhaseIterationsScheduled
 import icu.neurospicy.fibi.domain.service.friends.routines.events.RoutinePhaseScheduled
 import icu.neurospicy.fibi.domain.service.friends.routines.events.RoutineStepScheduled
 import icu.neurospicy.fibi.domain.service.friends.routines.events.RoutineTriggerScheduled
@@ -30,11 +28,17 @@ class QuartzRoutineSchedulerTest {
     private val routineEventLog = mockk<RoutineEventLog>(relaxed = true)
     private val timeExpressionEvaluator = mockk<TimeExpressionEvaluator>(relaxed = true)
     private val scheduler =
-        QuartzRoutineScheduler(friendshipLedger, quartzSchedulerService, eventPublisher, routineEventLog, timeExpressionEvaluator)
+        QuartzRoutineScheduler(
+            friendshipLedger,
+            quartzSchedulerService,
+            eventPublisher,
+            routineEventLog,
+            timeExpressionEvaluator
+        )
 
     @Nested
     inner class ScheduleTriggerTests {
-        
+
         @Test
         fun `schedules AfterDays trigger correctly using user's timezone`() {
             val friendshipId = FriendshipId()
@@ -43,7 +47,7 @@ class QuartzRoutineSchedulerTest {
 
             val instance = instanceWith(friendshipId)
             val trigger = RoutineTrigger(
-                condition = AfterDays(value = 2), 
+                condition = AfterDays(value = 2),
                 effect = SendMessage("Plan ahead!")
             )
 
@@ -83,14 +87,21 @@ class QuartzRoutineSchedulerTest {
             val duration = Duration.ofMinutes(45)
             val expectedTime = now.atZone(zoneId).plus(duration).withSecond(0).withNano(0)
 
-            val instance = instanceWith(friendshipId).copy(parameters = mutableMapOf(referenceKey to TypedParameter.fromValue(now)))
+            val instance =
+                instanceWith(friendshipId).copy(parameters = mutableMapOf(referenceKey to TypedParameter.fromValue(now)))
 
             val trigger = RoutineTrigger(
-                condition = AtTimeExpression(timeExpression = "\${someTime}+PT45M"), 
+                condition = AtTimeExpression(timeExpression = "\${someTime}+PT45M"),
                 effect = SendMessage("Reminder: Continue routine")
             )
 
-            every { timeExpressionEvaluator.evaluateAtTimeExpression("\${someTime}+PT45M", any(), zoneId) } returns expectedTime.toLocalDateTime()
+            every {
+                timeExpressionEvaluator.evaluateAtTimeExpression(
+                    "\${someTime}+PT45M",
+                    any(),
+                    zoneId
+                )
+            } returns expectedTime.toLocalDateTime()
 
             scheduler.scheduleTrigger(instance, trigger)
 
@@ -127,11 +138,17 @@ class QuartzRoutineSchedulerTest {
             val expectedTime = now.plus(duration)
             val instance = instanceWith(friendshipId)
             val trigger = RoutineTrigger(
-                condition = AtTimeExpression(timeExpression = "\${NOW}+PT30M"), 
+                condition = AtTimeExpression(timeExpression = "\${NOW}+PT30M"),
                 effect = SendMessage("Time to move!")
             )
 
-            every { timeExpressionEvaluator.evaluateAtTimeExpression("\${NOW}+PT30M", any(), zoneId) } returns expectedTime.toLocalDateTime()
+            every {
+                timeExpressionEvaluator.evaluateAtTimeExpression(
+                    "\${NOW}+PT30M",
+                    any(),
+                    zoneId
+                )
+            } returns expectedTime.toLocalDateTime()
 
             scheduler.scheduleTrigger(instance, trigger)
 
@@ -168,11 +185,17 @@ class QuartzRoutineSchedulerTest {
             val expectedTime = today.atTime(staticTime).atZone(zoneId)
             val instance = instanceWith(friendshipId)
             val trigger = RoutineTrigger(
-                condition = AtTimeExpression(timeExpression = "09:30"), 
+                condition = AtTimeExpression(timeExpression = "09:30"),
                 effect = SendMessage("Morning check-in!")
             )
 
-            every { timeExpressionEvaluator.evaluateAtTimeExpression("09:30", any(), zoneId) } returns expectedTime.toLocalDateTime()
+            every {
+                timeExpressionEvaluator.evaluateAtTimeExpression(
+                    "09:30",
+                    any(),
+                    zoneId
+                )
+            } returns expectedTime.toLocalDateTime()
 
             scheduler.scheduleTrigger(instance, trigger)
 
@@ -213,11 +236,17 @@ class QuartzRoutineSchedulerTest {
                     eventType = RoutineAnchorEvent.ROUTINE_STARTED,
                     phaseTitle = "Morning Phase",
                     timeExpression = "PT15M"
-                ), 
+                ),
                 effect = SendMessage("15 minutes after routine started!")
             )
 
-            every { timeExpressionEvaluator.evaluateAtTimeExpression("PT15M", any(), zoneId) } returns expectedTime.toLocalDateTime()
+            every {
+                timeExpressionEvaluator.evaluateAtTimeExpression(
+                    "PT15M",
+                    any(),
+                    zoneId
+                )
+            } returns expectedTime.toLocalDateTime()
 
             scheduler.scheduleTrigger(instance, trigger)
 
@@ -260,11 +289,17 @@ class QuartzRoutineSchedulerTest {
                     eventType = RoutineAnchorEvent.PHASE_ENTERED,
                     phaseTitle = "Breakfast Phase",
                     timeExpression = "\${wakeUpTime}+PT2H"
-                ), 
+                ),
                 effect = SendMessage("2 hours after wake up!")
             )
 
-            every { timeExpressionEvaluator.evaluateAtTimeExpression("\${wakeUpTime}+PT2H", any(), zoneId) } returns expectedTime.toLocalDateTime()
+            every {
+                timeExpressionEvaluator.evaluateAtTimeExpression(
+                    "\${wakeUpTime}+PT2H",
+                    any(),
+                    zoneId
+                )
+            } returns expectedTime.toLocalDateTime()
 
             scheduler.scheduleTrigger(instance, trigger)
 
@@ -306,7 +341,7 @@ class QuartzRoutineSchedulerTest {
                 condition = AfterDuration(
                     reference = "startTime",
                     duration = duration
-                ), 
+                ),
                 effect = SendMessage("45 minutes after start!")
             )
 
@@ -348,7 +383,7 @@ class QuartzRoutineSchedulerTest {
                 condition = AfterDuration(
                     reference = null,
                     duration = duration
-                ), 
+                ),
                 effect = SendMessage("2 hours from now!")
             )
 
@@ -387,7 +422,7 @@ class QuartzRoutineSchedulerTest {
                 condition = AfterDuration(
                     reference = "missingParameter",
                     duration = Duration.ofMinutes(30)
-                ), 
+                ),
                 effect = SendMessage("Should not schedule")
             )
 
@@ -399,7 +434,7 @@ class QuartzRoutineSchedulerTest {
 
     @Nested
     inner class ScheduleTriggerNegativeCases {
-        
+
         @Test
         fun `does not schedule AfterPhaseCompletions condition`() {
             val friendshipId = FriendshipId()
@@ -408,9 +443,9 @@ class QuartzRoutineSchedulerTest {
             val instance = instanceWith(friendshipId)
             val trigger = RoutineTrigger(
                 condition = AfterPhaseCompletions(
-                    phaseId = RoutinePhaseId.forTitle("phase1"), 
+                    phaseId = RoutinePhaseId.forTitle("phase1"),
                     times = 2
-                ), 
+                ),
                 effect = SendMessage("Should not schedule")
             )
             scheduler.scheduleTrigger(instance, trigger)
@@ -424,7 +459,7 @@ class QuartzRoutineSchedulerTest {
             every { friendshipLedger.findTimezoneBy(friendshipId) } returns zoneId
             val instance = instanceWith(friendshipId)
             val trigger = RoutineTrigger(
-                condition = AfterParameterSet(parameterKey = "ready"), 
+                condition = AfterParameterSet(parameterKey = "ready"),
                 effect = SendMessage("Should not schedule")
             )
             scheduler.scheduleTrigger(instance, trigger)
@@ -439,11 +474,17 @@ class QuartzRoutineSchedulerTest {
 
             val instance = instanceWith(friendshipId)
             val trigger = RoutineTrigger(
-                condition = AtTimeExpression(timeExpression = "invalid-time-expression"), 
+                condition = AtTimeExpression(timeExpression = "invalid-time-expression"),
                 effect = SendMessage("Should not schedule")
             )
 
-            every { timeExpressionEvaluator.evaluateAtTimeExpression("invalid-time-expression", any(), zoneId) } returns null
+            every {
+                timeExpressionEvaluator.evaluateAtTimeExpression(
+                    "invalid-time-expression",
+                    any(),
+                    zoneId
+                )
+            } returns null
 
             scheduler.scheduleTrigger(instance, trigger)
 
@@ -458,11 +499,17 @@ class QuartzRoutineSchedulerTest {
 
             val instance = instanceWith(friendshipId).copy(parameters = emptyMap())
             val trigger = RoutineTrigger(
-                condition = AtTimeExpression(timeExpression = "\${missingParameter}+PT1H"), 
+                condition = AtTimeExpression(timeExpression = "\${missingParameter}+PT1H"),
                 effect = SendMessage("Should not schedule")
             )
 
-            every { timeExpressionEvaluator.evaluateAtTimeExpression("\${missingParameter}+PT1H", any(), zoneId) } returns null
+            every {
+                timeExpressionEvaluator.evaluateAtTimeExpression(
+                    "\${missingParameter}+PT1H",
+                    any(),
+                    zoneId
+                )
+            } returns null
 
             scheduler.scheduleTrigger(instance, trigger)
 
@@ -481,7 +528,7 @@ class QuartzRoutineSchedulerTest {
                     eventType = RoutineAnchorEvent.ROUTINE_STARTED,
                     phaseTitle = "Morning Phase",
                     timeExpression = "invalid-duration"
-                ), 
+                ),
                 effect = SendMessage("Should not schedule")
             )
 
@@ -496,7 +543,7 @@ class QuartzRoutineSchedulerTest {
 
     @Nested
     inner class ScheduleStepTimeOfDayTests {
-        
+
         @Test
         fun `schedules RoutineStep with TimeOfDayReference parameter correctly`() {
             val friendshipId = FriendshipId()
@@ -504,10 +551,14 @@ class QuartzRoutineSchedulerTest {
             every { friendshipLedger.findTimezoneBy(friendshipId) } returns zoneId
 
             val wakeUpTime = Instant.now().plusSeconds(3600)
-            val instance = instanceWith(friendshipId).copy(parameters = mutableMapOf("wakeUpTime" to TypedParameter.fromValue(wakeUpTime)))
+            val instance = instanceWith(friendshipId).copy(
+                parameters = mutableMapOf(
+                    "wakeUpTime" to TypedParameter.fromValue(wakeUpTime)
+                )
+            )
             val phaseId = RoutinePhaseId.forTitle("phase1")
             val step = ActionRoutineStep(
-                message = "Wake up and stretch", 
+                message = "Wake up and stretch",
                 timeOfDay = TimeOfDayReference("wakeUpTime")
             )
             scheduler.scheduleStep(instance, step, phaseId)
@@ -517,16 +568,16 @@ class QuartzRoutineSchedulerTest {
                         it.contains(friendshipId.toString()) && it.contains(instance.instanceId.toString()) && it.contains(
                             phaseId.toString()
                         ) && it.contains(step.id.toString())
-                    }, 
-                    "routineJobs", 
+                    },
+                    "routineJobs",
                     withArg {
                         val expectedTime = wakeUpTime.atZone(zoneId)
                         assertThat(it.toInstant()).isCloseTo(expectedTime.toInstant(), within(2, ChronoUnit.MINUTES))
-                    }, 
-                    RoutineStepSchedulerJob::class.java, 
+                    },
+                    RoutineStepSchedulerJob::class.java,
                     match {
                         it["phaseId"] == phaseId.toString() && it["stepId"] == step.id.toString()
-                    }, 
+                    },
                     any()
                 )
                 eventPublisher.publishEvent(match {
@@ -548,7 +599,7 @@ class QuartzRoutineSchedulerTest {
             val instance = instanceWith(friendshipId)
             val phaseId = instance.currentPhaseId!!
             val step = ActionRoutineStep(
-                message = "Go for a walk", 
+                message = "Go for a walk",
                 timeOfDay = TimeOfDayLocalTime(staticTime)
             )
             scheduler.scheduleStep(instance, step, phaseId)
@@ -597,12 +648,18 @@ class QuartzRoutineSchedulerTest {
             )
             val phaseId = RoutinePhaseId.forTitle("phase1")
             val step = ActionRoutineStep(
-                message = "Take medication", 
+                message = "Take medication",
                 timeOfDay = TimeOfDayExpression("\${wakeUpTime}+PT1H")
             )
-            
-            every { timeExpressionEvaluator.evaluateTimeExpression("\${wakeUpTime}+PT1H", any(), zoneId) } returns expectedTime.toLocalDateTime()
-            
+
+            every {
+                timeExpressionEvaluator.evaluateTimeExpression(
+                    "\${wakeUpTime}+PT1H",
+                    any(),
+                    zoneId
+                )
+            } returns expectedTime.toLocalDateTime()
+
             scheduler.scheduleStep(instance, step, phaseId)
             verify {
                 quartzSchedulerService.scheduleJob(
@@ -640,7 +697,7 @@ class QuartzRoutineSchedulerTest {
             )
             val phaseId = instance.currentPhaseId!!
             val step = ActionRoutineStep(
-                message = "Take vitamins", 
+                message = "Take vitamins",
                 timeOfDay = TimeOfDayReference("vitaminTime")
             )
             scheduler.scheduleStep(instance, step, phaseId)
@@ -658,12 +715,12 @@ class QuartzRoutineSchedulerTest {
             )
             val phaseId = RoutinePhaseId.forTitle("phase1")
             val step = ActionRoutineStep(
-                message = "Take medication", 
+                message = "Take medication",
                 timeOfDay = TimeOfDayExpression("invalid-expression")
             )
-            
+
             every { timeExpressionEvaluator.evaluateTimeExpression("invalid-expression", any(), zoneId) } returns null
-            
+
             scheduler.scheduleStep(instance, step, phaseId)
             verify { quartzSchedulerService wasNot Called }
         }
@@ -677,7 +734,7 @@ class QuartzRoutineSchedulerTest {
             val instance = instanceWith(friendshipId)
             val phaseId = instance.currentPhaseId!!
             val step = ActionRoutineStep(
-                message = "Immediate action", 
+                message = "Immediate action",
                 timeOfDay = null
             )
             scheduler.scheduleStep(instance, step, phaseId)
@@ -696,7 +753,7 @@ class QuartzRoutineSchedulerTest {
             val wakeUpTime = Instant.now().plusSeconds(1200)
             val instance = instanceWith(
                 friendshipId, mutableMapOf(
-                    "wakeUpTime" to TypedParameter.fromValue(wakeUpTime), 
+                    "wakeUpTime" to TypedParameter.fromValue(wakeUpTime),
                     "specialMorningActivity" to TypedParameter.fromValue(specialActivity)
                 )
             )
@@ -761,8 +818,8 @@ class QuartzRoutineSchedulerTest {
             val duration = Duration.ofMinutes(30)
             val expectedTime = referenceTime.atZone(zoneId).plus(duration)
             val phase = RoutinePhase(
-                title = "Workout", 
-                condition = AfterDuration(reference = "startTime", duration = duration), 
+                title = "Workout",
+                condition = AfterDuration(reference = "startTime", duration = duration),
                 steps = listOf(aMessageStep())
             )
             val instance = instanceWith(friendshipId).copy(
@@ -802,8 +859,8 @@ class QuartzRoutineSchedulerTest {
             val now = ZonedDateTime.now(zoneId)
             val expectedTime = now.plus(duration)
             val phase = RoutinePhase(
-                title = "Lunch", 
-                condition = AfterDuration(reference = null, duration = duration), 
+                title = "Lunch",
+                condition = AfterDuration(reference = null, duration = duration),
                 steps = listOf(aMessageStep())
             )
             val instance = instanceWith(friendshipId)
@@ -838,8 +895,8 @@ class QuartzRoutineSchedulerTest {
             val friendshipId = FriendshipId()
             val zoneId = ZoneId.of("Europe/Berlin")
             val phase = RoutinePhase(
-                title = "Should not schedule", 
-                condition = AfterDuration(reference = "missingParameter", duration = Duration.ofMinutes(30)), 
+                title = "Should not schedule",
+                condition = AfterDuration(reference = "missingParameter", duration = Duration.ofMinutes(30)),
                 steps = listOf(aMessageStep())
             )
             val instance = instanceWith(friendshipId).copy(parameters = emptyMap())
@@ -856,7 +913,11 @@ class QuartzRoutineSchedulerTest {
         @Test
         fun `schedules Phase iterations with DAILY schedule`() {
             val friendshipId = FriendshipId()
-            val phase = RoutinePhase(title = "Daily Exercise", schedule = ScheduleExpression.DAILY, steps = listOf(aMessageStep()))
+            val phase = RoutinePhase(
+                title = "Daily Exercise",
+                schedule = ScheduleExpression.DAILY,
+                steps = listOf(aMessageStep())
+            )
             justRun { quartzSchedulerService.scheduleJob(any(), any(), any(), any(), any()) }
             // Act
             scheduler.schedulePhaseIterations(instanceWith(friendshipId), phase)
@@ -866,7 +927,7 @@ class QuartzRoutineSchedulerTest {
                     "routineJobs",
                     RoutinePhaseIterationSchedulerJob::class.java,
                     match { it["phaseId"] == phase.id.toString() },
-                    "0 0 * * *"
+                    "0 0 0 ? * *"
                 )
             }
         }
@@ -874,18 +935,22 @@ class QuartzRoutineSchedulerTest {
         @Test
         fun `schedules Phase iterations with WEEKLY schedule`() {
             val friendshipId = FriendshipId()
-            val phase = RoutinePhase(title = "Weekly Review", schedule = ScheduleExpression.WEEKLY, steps = listOf(aMessageStep()))
+            val phase = RoutinePhase(
+                title = "Weekly Review",
+                schedule = ScheduleExpression.WEEKLY,
+                steps = listOf(aMessageStep())
+            )
             justRun { quartzSchedulerService.scheduleJob(any(), any(), any(), any(), any()) }
-            
+
             scheduler.schedulePhaseIterations(instanceWith(friendshipId), phase)
-            
+
             verify {
                 quartzSchedulerService.scheduleJob(
                     match { it.contains("phase-iteration") },
                     "routineJobs",
                     RoutinePhaseIterationSchedulerJob::class.java,
                     match { it["phaseId"] == phase.id.toString() },
-                    "0 0 * * MON"
+                    "0 0 0 ? * MON"
                 )
             }
         }
@@ -893,18 +958,22 @@ class QuartzRoutineSchedulerTest {
         @Test
         fun `schedules Phase iterations with WEEKDAYS schedule`() {
             val friendshipId = FriendshipId()
-            val phase = RoutinePhase(title = "Work Routine", schedule = ScheduleExpression.WEEKDAYS, steps = listOf(aMessageStep()))
+            val phase = RoutinePhase(
+                title = "Work Routine",
+                schedule = ScheduleExpression.WEEKDAYS,
+                steps = listOf(aMessageStep())
+            )
             justRun { quartzSchedulerService.scheduleJob(any(), any(), any(), any(), any()) }
-            
+
             scheduler.schedulePhaseIterations(instanceWith(friendshipId), phase)
-            
+
             verify {
                 quartzSchedulerService.scheduleJob(
                     match { it.contains("phase-iteration") },
                     "routineJobs",
                     RoutinePhaseIterationSchedulerJob::class.java,
                     match { it["phaseId"] == phase.id.toString() },
-                    "0 0 * * MON-FRI"
+                    "0 0 0 ? * MON-FRI"
                 )
             }
         }
@@ -912,18 +981,22 @@ class QuartzRoutineSchedulerTest {
         @Test
         fun `schedules Phase iterations with WEEKENDS schedule`() {
             val friendshipId = FriendshipId()
-            val phase = RoutinePhase(title = "Weekend Relaxation", schedule = ScheduleExpression.WEEKENDS, steps = listOf(aMessageStep()))
+            val phase = RoutinePhase(
+                title = "Weekend Relaxation",
+                schedule = ScheduleExpression.WEEKENDS,
+                steps = listOf(aMessageStep())
+            )
             justRun { quartzSchedulerService.scheduleJob(any(), any(), any(), any(), any()) }
-            
+
             scheduler.schedulePhaseIterations(instanceWith(friendshipId), phase)
-            
+
             verify {
                 quartzSchedulerService.scheduleJob(
                     match { it.contains("phase-iteration") },
                     "routineJobs",
                     RoutinePhaseIterationSchedulerJob::class.java,
                     match { it["phaseId"] == phase.id.toString() },
-                    "0 0 * * SAT,SUN"
+                    "0 0 0 ? * SAT,SUN"
                 )
             }
         }
@@ -931,18 +1004,22 @@ class QuartzRoutineSchedulerTest {
         @Test
         fun `schedules Phase iterations with MONDAY schedule`() {
             val friendshipId = FriendshipId()
-            val phase = RoutinePhase(title = "Monday Motivation", schedule = ScheduleExpression.MONDAY, steps = listOf(aMessageStep()))
+            val phase = RoutinePhase(
+                title = "Monday Motivation",
+                schedule = ScheduleExpression.MONDAY,
+                steps = listOf(aMessageStep())
+            )
             justRun { quartzSchedulerService.scheduleJob(any(), any(), any(), any(), any()) }
-            
+
             scheduler.schedulePhaseIterations(instanceWith(friendshipId), phase)
-            
+
             verify {
                 quartzSchedulerService.scheduleJob(
                     match { it.contains("phase-iteration") },
                     "routineJobs",
                     RoutinePhaseIterationSchedulerJob::class.java,
                     match { it["phaseId"] == phase.id.toString() },
-                    "0 0 * * MON"
+                    "0 0 0 ? * MON"
                 )
             }
         }
@@ -950,18 +1027,22 @@ class QuartzRoutineSchedulerTest {
         @Test
         fun `schedules Phase iterations with TUESDAY schedule`() {
             val friendshipId = FriendshipId()
-            val phase = RoutinePhase(title = "Tuesday Tasks", schedule = ScheduleExpression.TUESDAY, steps = listOf(aMessageStep()))
+            val phase = RoutinePhase(
+                title = "Tuesday Tasks",
+                schedule = ScheduleExpression.TUESDAY,
+                steps = listOf(aMessageStep())
+            )
             justRun { quartzSchedulerService.scheduleJob(any(), any(), any(), any(), any()) }
-            
+
             scheduler.schedulePhaseIterations(instanceWith(friendshipId), phase)
-            
+
             verify {
                 quartzSchedulerService.scheduleJob(
                     match { it.contains("phase-iteration") },
                     "routineJobs",
                     RoutinePhaseIterationSchedulerJob::class.java,
                     match { it["phaseId"] == phase.id.toString() },
-                    "0 0 * * TUE"
+                    "0 0 0 ? * TUE"
                 )
             }
         }
@@ -969,18 +1050,22 @@ class QuartzRoutineSchedulerTest {
         @Test
         fun `schedules Phase iterations with WEDNESDAY schedule`() {
             val friendshipId = FriendshipId()
-            val phase = RoutinePhase(title = "Wednesday Wellness", schedule = ScheduleExpression.WEDNESDAY, steps = listOf(aMessageStep()))
+            val phase = RoutinePhase(
+                title = "Wednesday Wellness",
+                schedule = ScheduleExpression.WEDNESDAY,
+                steps = listOf(aMessageStep())
+            )
             justRun { quartzSchedulerService.scheduleJob(any(), any(), any(), any(), any()) }
-            
+
             scheduler.schedulePhaseIterations(instanceWith(friendshipId), phase)
-            
+
             verify {
                 quartzSchedulerService.scheduleJob(
                     match { it.contains("phase-iteration") },
                     "routineJobs",
                     RoutinePhaseIterationSchedulerJob::class.java,
                     match { it["phaseId"] == phase.id.toString() },
-                    "0 0 * * WED"
+                    "0 0 0 ? * WED"
                 )
             }
         }
@@ -988,18 +1073,22 @@ class QuartzRoutineSchedulerTest {
         @Test
         fun `schedules Phase iterations with THURSDAY schedule`() {
             val friendshipId = FriendshipId()
-            val phase = RoutinePhase(title = "Thursday Thoughts", schedule = ScheduleExpression.THURSDAY, steps = listOf(aMessageStep()))
+            val phase = RoutinePhase(
+                title = "Thursday Thoughts",
+                schedule = ScheduleExpression.THURSDAY,
+                steps = listOf(aMessageStep())
+            )
             justRun { quartzSchedulerService.scheduleJob(any(), any(), any(), any(), any()) }
-            
+
             scheduler.schedulePhaseIterations(instanceWith(friendshipId), phase)
-            
+
             verify {
                 quartzSchedulerService.scheduleJob(
                     match { it.contains("phase-iteration") },
                     "routineJobs",
                     RoutinePhaseIterationSchedulerJob::class.java,
                     match { it["phaseId"] == phase.id.toString() },
-                    "0 0 * * THU"
+                    "0 0 0 ? * THU"
                 )
             }
         }
@@ -1007,18 +1096,22 @@ class QuartzRoutineSchedulerTest {
         @Test
         fun `schedules Phase iterations with FRIDAY schedule`() {
             val friendshipId = FriendshipId()
-            val phase = RoutinePhase(title = "Friday Finish", schedule = ScheduleExpression.FRIDAY, steps = listOf(aMessageStep()))
+            val phase = RoutinePhase(
+                title = "Friday Finish",
+                schedule = ScheduleExpression.FRIDAY,
+                steps = listOf(aMessageStep())
+            )
             justRun { quartzSchedulerService.scheduleJob(any(), any(), any(), any(), any()) }
-            
+
             scheduler.schedulePhaseIterations(instanceWith(friendshipId), phase)
-            
+
             verify {
                 quartzSchedulerService.scheduleJob(
                     match { it.contains("phase-iteration") },
                     "routineJobs",
                     RoutinePhaseIterationSchedulerJob::class.java,
                     match { it["phaseId"] == phase.id.toString() },
-                    "0 0 * * FRI"
+                    "0 0 0 ? * FRI"
                 )
             }
         }
@@ -1026,18 +1119,22 @@ class QuartzRoutineSchedulerTest {
         @Test
         fun `schedules Phase iterations with SATURDAY schedule`() {
             val friendshipId = FriendshipId()
-            val phase = RoutinePhase(title = "Saturday Self-Care", schedule = ScheduleExpression.SATURDAY, steps = listOf(aMessageStep()))
+            val phase = RoutinePhase(
+                title = "Saturday Self-Care",
+                schedule = ScheduleExpression.SATURDAY,
+                steps = listOf(aMessageStep())
+            )
             justRun { quartzSchedulerService.scheduleJob(any(), any(), any(), any(), any()) }
-            
+
             scheduler.schedulePhaseIterations(instanceWith(friendshipId), phase)
-            
+
             verify {
                 quartzSchedulerService.scheduleJob(
                     match { it.contains("phase-iteration") },
                     "routineJobs",
                     RoutinePhaseIterationSchedulerJob::class.java,
                     match { it["phaseId"] == phase.id.toString() },
-                    "0 0 * * SAT"
+                    "0 0 0 ? * SAT"
                 )
             }
         }
@@ -1045,18 +1142,22 @@ class QuartzRoutineSchedulerTest {
         @Test
         fun `schedules Phase iterations with SUNDAY schedule`() {
             val friendshipId = FriendshipId()
-            val phase = RoutinePhase(title = "Sunday Reflection", schedule = ScheduleExpression.SUNDAY, steps = listOf(aMessageStep()))
+            val phase = RoutinePhase(
+                title = "Sunday Reflection",
+                schedule = ScheduleExpression.SUNDAY,
+                steps = listOf(aMessageStep())
+            )
             justRun { quartzSchedulerService.scheduleJob(any(), any(), any(), any(), any()) }
-            
+
             scheduler.schedulePhaseIterations(instanceWith(friendshipId), phase)
-            
+
             verify {
                 quartzSchedulerService.scheduleJob(
                     match { it.contains("phase-iteration") },
                     "routineJobs",
                     RoutinePhaseIterationSchedulerJob::class.java,
                     match { it["phaseId"] == phase.id.toString() },
-                    "0 0 * * SUN"
+                    "0 0 0 ? * SUN"
                 )
             }
         }
@@ -1065,11 +1166,15 @@ class QuartzRoutineSchedulerTest {
         fun `schedules Phase iterations with custom cron expression`() {
             val friendshipId = FriendshipId()
             val customCron = "0 30 7 * * MON-FRI" // 7:30 AM on weekdays
-            val phase = RoutinePhase(title = "Custom Schedule", schedule = ScheduleExpression.Custom(customCron), steps = listOf(aMessageStep()))
+            val phase = RoutinePhase(
+                title = "Custom Schedule",
+                schedule = ScheduleExpression.Custom(customCron),
+                steps = listOf(aMessageStep())
+            )
             justRun { quartzSchedulerService.scheduleJob(any(), any(), any(), any(), any()) }
-            
+
             scheduler.schedulePhaseIterations(instanceWith(friendshipId), phase)
-            
+
             verify {
                 quartzSchedulerService.scheduleJob(
                     match { it.contains("phase-iteration") },
@@ -1108,12 +1213,13 @@ class QuartzRoutineSchedulerTest {
         @Test
         fun `remove phase iteration scheduler deletes correct job`() {
             val friendshipId = FriendshipId()
-            val instanceId = RoutineInstanceId.forInstance(RoutineTemplateId.forTitleVersion("Morning", "1.0"), friendshipId)
+            val instanceId =
+                RoutineInstanceId.forInstance(RoutineTemplateId.forTitleVersion("Morning", "1.0"), friendshipId)
             val phaseId = RoutinePhaseId.forTitle("Breakfast")
             justRun { quartzSchedulerService.deleteJob(any(), any()) }
-            
+
             scheduler.removePhaseIterationSchedule(friendshipId, instanceId, phaseId)
-            
+
             verify {
                 quartzSchedulerService.deleteJob(
                     "routine-phase-iteration-${friendshipId}-${instanceId}-${phaseId}",
@@ -1125,12 +1231,13 @@ class QuartzRoutineSchedulerTest {
         @Test
         fun `remove phase activation scheduler deletes correct job`() {
             val friendshipId = FriendshipId()
-            val instanceId = RoutineInstanceId.forInstance(RoutineTemplateId.forTitleVersion("Morning", "1.0"), friendshipId)
+            val instanceId =
+                RoutineInstanceId.forInstance(RoutineTemplateId.forTitleVersion("Morning", "1.0"), friendshipId)
             val phaseId = RoutinePhaseId.forTitle("Breakfast")
             justRun { quartzSchedulerService.deleteJob(any(), any()) }
-            
+
             scheduler.removePhaseActivationSchedule(friendshipId, instanceId, phaseId)
-            
+
             verify {
                 quartzSchedulerService.deleteJob(
                     "routine-phase-${friendshipId}-${instanceId}-${phaseId}",
@@ -1140,7 +1247,10 @@ class QuartzRoutineSchedulerTest {
         }
     }
 
-    private fun instanceWith(friendshipId: FriendshipId, parameters: Map<String, TypedParameter> = emptyMap()): RoutineInstance {
+    private fun instanceWith(
+        friendshipId: FriendshipId,
+        parameters: Map<String, TypedParameter> = emptyMap(),
+    ): RoutineInstance {
         return RoutineInstance(
             _id = UUID.randomUUID().toString(),
             templateId = RoutineTemplateId.forTitleVersion("Morning routine", "1.0"),

@@ -182,7 +182,7 @@ class GoalRefinerTest {
 
         // Assert
         assertEquals(existingContext.goal, result.goal)
-        assertEquals(newSubtasks, result.subtasks)
+        assertEquals(existingContext.subtasks, result.subtasks)
         assertNull(result.goalClarificationQuestion)
     }
 

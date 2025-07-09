@@ -94,16 +94,19 @@ class ConversationOrchestratorTest {
     fun `should handle pending goal clarification and proceed normally on success`() = runBlocking {
         // Arrange
         val initialPendingGoalContext = goalContextNeedingClarification()
-        val updatedContext = initialPendingGoalContext.copy(goalClarificationQuestion = null)
         val clarificationResponse = GoalClarificationResponse.clarified(TaskIntents.List)
+        
+        // Expected context after goal refinement
+        val finalContext = initialPendingGoalContext.copy(
+            goalClarificationQuestion = null,
+            goal = Goal(TaskIntents.List)
+        )
 
         every { contextRepository.loadContext(any()) } returns initialPendingGoalContext
         coEvery { goalRefiner.handleClarification(any(), any(), any()) } returns clarificationResponse
-        coEvery { intentClassifier.classifyIntent(any<Conversation>()) } returns listOf(
-            IntentClassifier.IntentClassification(CoreIntents.FollowUp, 0.8f)
-        )
-        coEvery { goalRefiner.refineGoal(any(), any(), any(), any()) } returns updatedContext
-        coEvery { goalAchiever.advance(any(), any(), any()) } returns GoalAdvancementResult.completed(updatedContext)
+        // Intent classification should be skipped due to clarified intent
+        coEvery { goalRefiner.refineGoal(any(), any(), any(), any()) } returns finalContext
+        coEvery { goalAchiever.advance(any(), any(), any()) } returns GoalAdvancementResult.completed(finalContext)
         every { contextRepository.saveContext(any(), any()) } returns Unit
         every { eventPublisher.publishEvent(any()) } returns Unit
 
@@ -112,10 +115,58 @@ class ConversationOrchestratorTest {
 
         // Assert
         coVerify { goalRefiner.handleClarification(friendshipId, initialPendingGoalContext, userMessage) }
-        verify { contextRepository.saveContext(friendshipId, updatedContext) }
-        coVerify { intentClassifier.classifyIntent(any<Conversation>()) }
-        coVerify { goalAchiever.advance(updatedContext, friendshipId, userMessage) }
+        // Verify that context is immediately updated after clarification
+        verify { 
+            contextRepository.saveContext(friendshipId, match<GoalContext> {
+                it.goalClarificationQuestion == null
+            })
+        }
+        // Intent classification should NOT be called due to skip logic
+        verify { intentClassifier wasNot Called }
+        coVerify { goalAchiever.advance(finalContext, friendshipId, userMessage) }
         verify { eventPublisher.publishEvent(any()) }
+    }
+
+    @Test
+    fun `should skip intent classification when clarified intent is available`() = runBlocking {
+        // Arrange
+        val initialPendingGoalContext = goalContextNeedingClarification()
+        val clarificationResponse = GoalClarificationResponse.clarified(TaskIntents.Add)
+        
+        // Expected context after goal refinement
+        val finalContext = initialPendingGoalContext.copy(
+            goalClarificationQuestion = null,
+            goal = Goal(TaskIntents.Add)
+        )
+
+        every { contextRepository.loadContext(any()) } returns initialPendingGoalContext
+        coEvery { goalRefiner.handleClarification(any(), any(), any()) } returns clarificationResponse
+        coEvery { goalRefiner.refineGoal(any(), any(), any(), any()) } returns finalContext
+        coEvery { goalAchiever.advance(any(), any(), any()) } returns GoalAdvancementResult.completed(finalContext)
+        every { contextRepository.saveContext(any(), any()) } returns Unit
+        every { eventPublisher.publishEvent(any()) } returns Unit
+
+        // Act
+        orchestrator.onMessage(incomingEvent)
+
+        // Assert
+        coVerify { goalRefiner.handleClarification(friendshipId, initialPendingGoalContext, userMessage) }
+        // Verify that intent classification is completely skipped
+        verify { intentClassifier wasNot Called }
+        // Verify that goal refinement is called with the clarified intent
+        coVerify { 
+            goalRefiner.refineGoal(
+                match { intents -> 
+                    intents.size == 1 && 
+                    intents[0].intent == TaskIntents.Add && 
+                    intents[0].confidence == 1f 
+                }, 
+                friendshipId, 
+                userMessage, 
+                match<GoalContext> { it.goalClarificationQuestion == null }
+            ) 
+        }
+        coVerify { goalAchiever.advance(finalContext, friendshipId, userMessage) }
     }
 
     private fun goalContextNeedingClarification(): GoalContext = GoalContext(
