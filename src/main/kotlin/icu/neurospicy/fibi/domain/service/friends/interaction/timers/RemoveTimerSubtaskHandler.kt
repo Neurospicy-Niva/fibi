@@ -7,7 +7,7 @@ import icu.neurospicy.fibi.domain.model.MessageId
 import icu.neurospicy.fibi.domain.model.Timer
 import icu.neurospicy.fibi.domain.repository.FriendshipLedger
 import icu.neurospicy.fibi.domain.repository.TimerRepository
-import icu.neurospicy.fibi.domain.service.friends.ADVANCED_MODEL
+
 import icu.neurospicy.fibi.domain.service.friends.interaction.*
 import icu.neurospicy.fibi.domain.service.friends.interaction.prompt.buildEntityIdentificationPrompt
 import icu.neurospicy.fibi.outgoing.ollama.LlmClient
@@ -24,6 +24,7 @@ class RemoveTimerSubtaskHandler(
     private val objectMapper: ObjectMapper,
     private val timerRepository: TimerRepository,
     friendshipLedger: FriendshipLedger,
+    private val complexTaskModel: String,
 ) : CrudSubtaskHandler<Unit, Timer>(
     intent = TimerIntents.Remove,
     entityHandler = object : CrudEntityHandler<Unit, Timer> {
@@ -63,7 +64,7 @@ class RemoveTimerSubtaskHandler(
 
             val resultJson = llmClient.promptReceivingJson(
                 listOf(UserMessage(prompt)),
-                OllamaOptions.builder().model(ADVANCED_MODEL).temperature(0.0).topP(0.8).build(),
+                OllamaOptions.builder().model(complexTaskModel).temperature(0.0).topP(0.8).build(),
                 timezone,
                 messageTime
             ) ?: return ClarifiedIdResolutionResult()

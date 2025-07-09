@@ -4,7 +4,6 @@ import icu.neurospicy.fibi.application.calendar.CalendarConfigValidator
 import icu.neurospicy.fibi.domain.model.*
 import icu.neurospicy.fibi.domain.model.events.CalendarRegistrationActivityFinished
 import icu.neurospicy.fibi.domain.repository.*
-import icu.neurospicy.fibi.domain.service.friends.ADVANCED_MODEL
 import icu.neurospicy.fibi.domain.service.friends.interaction.*
 import icu.neurospicy.fibi.outgoing.http.UnvalidatedCalendarConfiguration
 import icu.neurospicy.fibi.outgoing.ollama.ExpectedField
@@ -29,8 +28,9 @@ class RegisterCalendarSubtaskHandler(
     private val calendarConfigValidator: CalendarConfigValidator,
     private val llmClient: LlmClient,
     private val informationExtractor: InformationExtractor,
-    val eventPublisher: ApplicationEventPublisher,
-    val calendarActivityRepository: CalendarActivityRepository,
+    private val eventPublisher: ApplicationEventPublisher,
+    private val calendarActivityRepository: CalendarActivityRepository,
+    private val complexTaskModel: String,
 ) : CrudSubtaskHandler<CalendarConfigurations, CalendarConfiguration>(
     intent = CalendarIntents.Register,
     entityHandler = object : CrudEntityHandler<CalendarConfigurations, CalendarConfiguration> {
@@ -75,7 +75,7 @@ class RegisterCalendarSubtaskHandler(
 
                 val helpMessage = llmClient.promptReceivingText(
                     listOf(AiUserMessage(supportPrompt)),
-                    OllamaOptions.builder().model(ADVANCED_MODEL).temperature(0.3).topP(0.8).build(),
+                    OllamaOptions.builder().model(complexTaskModel).temperature(0.3).topP(0.8).build(),
                     timezone,
                     messageTime
                 )
@@ -144,7 +144,7 @@ class RegisterCalendarSubtaskHandler(
                             ExtractedCredential::class.java,
                             """
 Your task is to extract credentials that are used to access a calendar url.
-The credentials either consist of username and password or an API key. The calendar url is "${possibleCalendarUrl}".
+The credentials either consist of username and password or an API key. The calendar url is "$possibleCalendarUrl".
 
 ### Example 1
 **Message:**

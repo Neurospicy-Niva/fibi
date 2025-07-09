@@ -35,6 +35,7 @@ class GoalAchieverTest {
             subtaskHandlers,
             llmClient,
             friendshipLedger = mockk(relaxed = true),
+            "fibi64"
         )
     }
 

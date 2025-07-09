@@ -1,7 +1,6 @@
 package icu.neurospicy.fibi.domain.service.friends.interaction
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import icu.neurospicy.fibi.domain.service.friends.ADVANCED_MODEL
 import icu.neurospicy.fibi.outgoing.ollama.LlmClient
 import org.springframework.ai.ollama.api.OllamaOptions
 import org.springframework.stereotype.Service
@@ -14,6 +13,7 @@ import java.time.ZoneOffset
 class ExtractParamFromConversationService(
     private val llmClient: LlmClient,
     private val objectMapper: ObjectMapper,
+    private val complexTaskModel: String,
 ) {
     suspend fun extractLocalTime(question: String, answer: String): ExtractParamResult<LocalTime> {
         val prompt = buildPromptToExtractTypedValue(
@@ -21,7 +21,7 @@ class ExtractParamFromConversationService(
         )
         return llmClient.promptReceivingJson(
             listOf(org.springframework.ai.chat.messages.UserMessage(prompt)),
-            OllamaOptions.builder().model(ADVANCED_MODEL).temperature(0.0).topP(0.7).build(),
+            OllamaOptions.builder().model(complexTaskModel).temperature(0.0).topP(0.7).build(),
             ZoneOffset.UTC,
             Instant.now()
         )?.let { json ->
@@ -38,7 +38,7 @@ class ExtractParamFromConversationService(
         val prompt = buildPromptToExtractDateTime(question, answer)
         return llmClient.promptReceivingJson(
             listOf(org.springframework.ai.chat.messages.UserMessage(prompt)),
-            OllamaOptions.builder().model(ADVANCED_MODEL).temperature(0.0).topP(0.7).build(),
+            OllamaOptions.builder().model(complexTaskModel).temperature(0.0).topP(0.7).build(),
             ZoneOffset.UTC,
             Instant.now()
         )?.let { json ->
@@ -57,7 +57,7 @@ class ExtractParamFromConversationService(
         )
         return llmClient.promptReceivingJson(
             listOf(org.springframework.ai.chat.messages.UserMessage(prompt)),
-            OllamaOptions.builder().model(ADVANCED_MODEL).temperature(0.0).topP(0.7).build(),
+            OllamaOptions.builder().model(complexTaskModel).temperature(0.0).topP(0.7).build(),
             ZoneOffset.UTC,
             Instant.now()
         )?.let { json ->
@@ -83,7 +83,7 @@ class ExtractParamFromConversationService(
         val prompt = buildPromptToExtractNumber(typeAsString, question, answer)
         return llmClient.promptReceivingJson(
             listOf(org.springframework.ai.chat.messages.UserMessage(prompt)),
-            OllamaOptions.builder().model(ADVANCED_MODEL).temperature(0.0).topP(0.7).build(),
+            OllamaOptions.builder().model(complexTaskModel).temperature(0.0).topP(0.7).build(),
             ZoneOffset.UTC,
             Instant.now()
         )?.let { json ->
@@ -108,7 +108,7 @@ class ExtractParamFromConversationService(
         )
         return llmClient.promptReceivingJson(
             listOf(org.springframework.ai.chat.messages.UserMessage(prompt)),
-            OllamaOptions.builder().model(ADVANCED_MODEL).temperature(0.0).topP(0.7).build(),
+            OllamaOptions.builder().model(complexTaskModel).temperature(0.0).topP(0.7).build(),
             ZoneOffset.UTC,
             Instant.now()
         )?.let { json ->

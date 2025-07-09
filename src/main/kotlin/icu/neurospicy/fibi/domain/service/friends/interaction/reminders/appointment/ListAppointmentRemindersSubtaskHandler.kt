@@ -5,7 +5,7 @@ import icu.neurospicy.fibi.domain.model.AppointmentReminder
 import icu.neurospicy.fibi.domain.model.FriendshipId
 import icu.neurospicy.fibi.domain.repository.FriendshipLedger
 import icu.neurospicy.fibi.domain.repository.ReminderRepository
-import icu.neurospicy.fibi.domain.service.friends.ADVANCED_MODEL
+
 import icu.neurospicy.fibi.domain.service.friends.interaction.*
 import icu.neurospicy.fibi.outgoing.ollama.LlmClient
 import org.springframework.ai.chat.messages.UserMessage
@@ -21,13 +21,14 @@ class ListAppointmentRemindersSubtaskHandler(
     private val friendshipLedger: FriendshipLedger,
     private val llmClient: LlmClient,
     private val objectMapper: ObjectMapper,
+    private val complexTaskModel: String,
 ) : SubtaskHandler {
     override fun canHandle(intent: Intent): Boolean = intent == AppointmentReminderIntents.List
 
     override suspend fun handle(
         subtask: Subtask,
         context: GoalContext,
-        friendshipId: FriendshipId
+        friendshipId: FriendshipId,
     ): SubtaskResult {
         val rawText = subtask.parameters["rawText"] as? String
         val reminders = reminderRepository.findAppointmentRemindersBy(friendshipId)
@@ -60,7 +61,7 @@ class ListAppointmentRemindersSubtaskHandler(
         """.trimIndent()
             val response = llmClient.promptReceivingJson(
                 listOf(UserMessage(prompt)),
-                OllamaOptions.builder().model(ADVANCED_MODEL).temperature(0.0).topP(0.8).build(),
+                OllamaOptions.builder().model(complexTaskModel).temperature(0.0).topP(0.8).build(),
                 timezone,
                 messageTime
             ) ?: return SubtaskResult.failure(
@@ -98,7 +99,7 @@ class ListAppointmentRemindersSubtaskHandler(
         clarificationQuestion: SubtaskClarificationQuestion,
         answer: icu.neurospicy.fibi.domain.model.UserMessage,
         context: GoalContext,
-        friendshipId: FriendshipId
+        friendshipId: FriendshipId,
     ): SubtaskClarificationResult {
         return SubtaskClarificationResult.success(updatedSubtask = subtask)
     }

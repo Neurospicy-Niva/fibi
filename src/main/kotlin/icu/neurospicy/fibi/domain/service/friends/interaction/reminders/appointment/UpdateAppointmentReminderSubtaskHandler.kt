@@ -7,7 +7,7 @@ import icu.neurospicy.fibi.domain.model.FriendshipId
 import icu.neurospicy.fibi.domain.model.MessageId
 import icu.neurospicy.fibi.domain.repository.FriendshipLedger
 import icu.neurospicy.fibi.domain.repository.ReminderRepository
-import icu.neurospicy.fibi.domain.service.friends.ADVANCED_MODEL
+
 import icu.neurospicy.fibi.domain.service.friends.interaction.*
 import icu.neurospicy.fibi.domain.service.friends.interaction.prompt.buildEntityIdentificationPrompt
 import icu.neurospicy.fibi.outgoing.ollama.LlmClient
@@ -32,6 +32,7 @@ class UpdateAppointmentReminderSubtaskHandler(
     private val objectMapper: ObjectMapper,
     private val reminderRepository: ReminderRepository,
     friendshipLedger: FriendshipLedger,
+    private val complexTaskModel: String,
 ) : CrudSubtaskHandler<UpdatedAppointmentReminderInformation, AppointmentReminder>(
     intent = AppointmentReminderIntents.Update,
     entityHandler = object : CrudEntityHandler<UpdatedAppointmentReminderInformation, AppointmentReminder> {
@@ -63,7 +64,7 @@ class UpdateAppointmentReminderSubtaskHandler(
             )
             val resultJson = llmClient.promptReceivingJson(
                 listOf(UserMessage(prompt)),
-                OllamaOptions.builder().model(ADVANCED_MODEL).temperature(0.0).topP(0.8).build(),
+                OllamaOptions.builder().model(complexTaskModel).temperature(0.0).topP(0.8).build(),
                 timezone,
                 messageTime
             ) ?: return ClarifiedIdResolutionResult()
@@ -111,7 +112,7 @@ $rawText
             """.trimIndent()
             val jsonOffset = llmClient.promptReceivingJson(
                 listOf(SystemMessage(systemPromptOffset), UserMessage(userPromptOffset)),
-                OllamaOptions.builder().model(ADVANCED_MODEL).temperature(0.0).topP(0.8).build(),
+                OllamaOptions.builder().model(complexTaskModel).temperature(0.0).topP(0.8).build(),
                 timezone,
                 messageTime
             )
@@ -166,7 +167,7 @@ $rawText
             """.trimIndent()
             val jsonText = llmClient.promptReceivingJson(
                 listOf(SystemMessage(systemPromptText), UserMessage(userPromptText)),
-                OllamaOptions.builder().model(ADVANCED_MODEL).temperature(0.0).topP(0.8).build(),
+                OllamaOptions.builder().model(complexTaskModel).temperature(0.0).topP(0.8).build(),
                 timezone,
                 messageTime
             )
@@ -204,7 +205,7 @@ $rawText
             """.trimIndent()
             val jsonKeywords = llmClient.promptReceivingJson(
                 listOf(SystemMessage(systemPromptKeywords), UserMessage(userPromptKeywords)),
-                OllamaOptions.builder().model(ADVANCED_MODEL).temperature(0.0).topP(0.8).build(),
+                OllamaOptions.builder().model(complexTaskModel).temperature(0.0).topP(0.8).build(),
                 timezone,
                 messageTime
             )

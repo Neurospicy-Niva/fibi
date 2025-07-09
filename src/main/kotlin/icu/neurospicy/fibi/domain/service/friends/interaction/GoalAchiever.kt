@@ -3,7 +3,6 @@ package icu.neurospicy.fibi.domain.service.friends.interaction
 import icu.neurospicy.fibi.domain.model.FriendshipId
 import icu.neurospicy.fibi.domain.model.UserMessage
 import icu.neurospicy.fibi.domain.repository.FriendshipLedger
-import icu.neurospicy.fibi.domain.service.friends.ADVANCED_MODEL
 import icu.neurospicy.fibi.outgoing.ollama.LlmClient
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -18,6 +17,7 @@ class GoalAchiever(
     private val subtaskHandlers: List<SubtaskHandler>,
     private val llmClient: LlmClient,
     private val friendshipLedger: FriendshipLedger,
+    private val complexTaskModel: String,
 ) {
     /**
      * Advances the goal by attempting to complete subtasks.
@@ -149,7 +149,7 @@ class GoalAchiever(
                 """.trimIndent()
                 )
             ),
-            OllamaOptions.builder().model(ADVANCED_MODEL).temperature(0.0).topP(0.8).build(),
+            OllamaOptions.builder().model(complexTaskModel).temperature(0.0).topP(0.8).build(),
             timezone,
             message.receivedAt
         )?.trim()?.lowercase()?.startsWith("yes") ?: false

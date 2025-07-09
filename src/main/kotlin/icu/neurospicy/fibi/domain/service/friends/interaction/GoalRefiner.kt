@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import icu.neurospicy.fibi.domain.model.FriendshipId
 import icu.neurospicy.fibi.domain.model.UserMessage
 import icu.neurospicy.fibi.domain.repository.FriendshipLedger
-import icu.neurospicy.fibi.domain.service.friends.BASE_MODEL
 import icu.neurospicy.fibi.outgoing.ollama.LlmClient
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.map
@@ -27,6 +26,7 @@ class GoalRefiner(
     private val intentRegistry: IntentRegistry,
     private val objectMapper: ObjectMapper,
     private val goalDeteminators: List<GoalDeterminator>,
+    private val defaultModel: String,
 ) {
     val nonGoalIntents = setOf(CoreIntents.CancelGoal, CoreIntents.Unknown, CoreIntents.Smalltalk)
 
@@ -150,7 +150,7 @@ class GoalRefiner(
 
         val response = llmClient.promptReceivingText(
             listOf(org.springframework.ai.chat.messages.UserMessage(prompt)),
-            OllamaOptions.builder().model(BASE_MODEL).temperature(0.0).build(),
+            OllamaOptions.builder().model(defaultModel).temperature(0.0).build(),
             timezone,
             receivedAt
         )
@@ -204,7 +204,7 @@ class GoalRefiner(
 
         val response = llmClient.promptReceivingText(
             listOf(org.springframework.ai.chat.messages.UserMessage(prompt)),
-            OllamaOptions.builder().model(BASE_MODEL).temperature(0.0).build(),
+            OllamaOptions.builder().model(defaultModel).temperature(0.0).build(),
             timezone,
             receivedAt
         )

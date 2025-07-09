@@ -6,9 +6,6 @@ import icu.neurospicy.fibi.domain.model.events.MessageInteractionStarted
 import org.springframework.context.ApplicationEventPublisher
 import java.time.ZoneId
 
-internal const val BASE_MODEL = "[MODEL_NAME]"
-internal const val ADVANCED_MODEL = "[MODEL_NAME]"
-
 abstract class AbstractInteraction(
     private val eventPublisher: ApplicationEventPublisher
 ) {

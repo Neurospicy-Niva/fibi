@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import icu.neurospicy.fibi.domain.model.FriendshipId
 import icu.neurospicy.fibi.domain.model.UserMessage
 import icu.neurospicy.fibi.domain.repository.FriendshipLedger
-import icu.neurospicy.fibi.domain.service.friends.ADVANCED_MODEL
+
 import icu.neurospicy.fibi.domain.service.friends.interaction.RelevantText
 import icu.neurospicy.fibi.outgoing.ollama.LlmClient
 import org.springframework.ai.ollama.api.OllamaOptions
@@ -23,10 +23,11 @@ interface TimerClassifier {
 class LlmTimerClassifier(
     private val llmClient: LlmClient,
     private val friendshipLedger: FriendshipLedger,
-    private val objectMapper: ObjectMapper
+    private val objectMapper: ObjectMapper,
+    private val complexTaskModel: String,
 ) : TimerClassifier {
 
-    private val options = OllamaOptions.builder().model(ADVANCED_MODEL).temperature(0.1).build()
+    private val options = OllamaOptions.builder().model(complexTaskModel).temperature(0.1).build()
 
     override suspend fun extractSetTimers(friendshipId: FriendshipId, message: UserMessage): List<RelevantText> {
         return extractTimers("set", friendshipId, message)
@@ -90,7 +91,7 @@ class LlmTimerClassifier(
     }
 
     private suspend fun extractTimers(
-        action: String, friendshipId: FriendshipId, message: UserMessage
+        action: String, friendshipId: FriendshipId, message: UserMessage,
     ): List<RelevantText> {
         val promptText = when (action) {
             "set" -> """

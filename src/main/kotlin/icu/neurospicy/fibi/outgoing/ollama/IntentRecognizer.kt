@@ -21,8 +21,6 @@ import java.time.ZoneOffset.UTC
 import java.time.format.DateTimeFormatter.ISO_DATE_TIME
 import org.springframework.ai.chat.messages.UserMessage as AiUserMessage
 
-private const val BASE_MODEL = "[MODEL_NAME]"
-
 @Service
 class IntentRecognizer(
     private val llmClient: LlmClient,
@@ -31,6 +29,7 @@ class IntentRecognizer(
     private val objectMapper: ObjectMapper,
     private val intentRecognitionRepository: IntentRecognitionRepository,
     private val promptsConfiguration: PromptsConfiguration,
+    private val defaultModel: String,
 ) {
     suspend fun recognize(
         friendshipId: FriendshipId,
@@ -66,7 +65,7 @@ class IntentRecognizer(
         val llmResult = try {
             val llmResult = objectMapper.readValue<LlmResult>(sanitizedMessage)
             intentRecognitionRepository.recognized(
-                message.messageId, message.text, llmResult.intent, llmResult.likelyOtherIntents, BASE_MODEL
+                message.messageId, message.text, llmResult.intent, llmResult.likelyOtherIntents, defaultModel
             )
             Result(
                 possibleIntents.find { it.name == llmResult.intent }!!,
@@ -90,7 +89,7 @@ class IntentRecognizer(
         val llmResponse = try {
             val answer = llmClient.promptReceivingJson(
                 intentRecognitionPrompt,
-                OllamaOptions.builder().model(BASE_MODEL).temperature(0.4).build(),
+                OllamaOptions.builder().model(defaultModel).temperature(0.4).build(),
                 friendshipLedger.findBy(friendshipId)?.timeZone ?: UTC,
                 receivedAt
             )

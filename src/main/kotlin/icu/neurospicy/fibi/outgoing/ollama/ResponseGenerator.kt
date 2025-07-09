@@ -16,8 +16,6 @@ import java.time.Instant
 import java.time.ZoneOffset.UTC
 import java.time.ZonedDateTime
 
-private val DEFAULT_MODEL = "[MODEL_NAME]"
-
 @Service
 class ResponseGenerator(
     private val llmClient: LlmClient,
@@ -29,6 +27,7 @@ class ResponseGenerator(
     private val conversationRepository: ConversationRepository,
     private val calendarConfigurationRepository: CalendarConfigurationRepository,
     private val promptsConfiguration: PromptsConfiguration,
+    private val messageGenerationModel: String,
 
     ) {
     suspend fun generateResponseWith(
@@ -82,7 +81,7 @@ class ResponseGenerator(
                         is OutgoingAdaptedTextMessage -> createDescriptionForMessage(message)
                     }, friendshipId, name, sendingTimeAtUserZone, messageRespondingTo, message.useHistory
                 ),
-                OllamaOptions.builder().model(DEFAULT_MODEL).temperature(0.3).build(),
+                OllamaOptions.builder().model(messageGenerationModel).temperature(0.3).build(),
                 zone,
                 chatRepository.find(friendshipId, message.messageId).takeIf { it is UserMessage }
                     ?.let { it as UserMessage }?.receivedAt ?: Instant.now(),

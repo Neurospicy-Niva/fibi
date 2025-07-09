@@ -5,7 +5,7 @@ import com.fasterxml.jackson.module.kotlin.readValue
 import icu.neurospicy.fibi.domain.model.FriendshipId
 import icu.neurospicy.fibi.domain.model.UserMessage
 import icu.neurospicy.fibi.domain.repository.FriendshipLedger
-import icu.neurospicy.fibi.domain.service.friends.ADVANCED_MODEL
+
 import icu.neurospicy.fibi.domain.service.friends.interaction.RelevantText
 import icu.neurospicy.fibi.outgoing.ollama.LlmClient
 import org.slf4j.LoggerFactory
@@ -27,18 +27,19 @@ interface TimeBasedReminderClassifier {
 class TimeBasedReminderClassifierUsingLlm(
     private val llmClient: LlmClient,
     private val objectMapper: ObjectMapper,
-    private val friendshipLedger: FriendshipLedger
+    private val friendshipLedger: FriendshipLedger,
+    private val complexTaskModel: String,
 ) : TimeBasedReminderClassifier {
     override suspend fun extractAddReminders(
-        friendshipId: FriendshipId, message: UserMessage
+        friendshipId: FriendshipId, message: UserMessage,
     ): List<RelevantText> = classify(message, friendshipId, "add")
 
     override suspend fun extractRemoveReminders(
-        friendshipId: FriendshipId, message: UserMessage
+        friendshipId: FriendshipId, message: UserMessage,
     ): List<RelevantText> = classify(message, friendshipId, "remove")
 
     override suspend fun extractListReminders(
-        friendshipId: FriendshipId, message: UserMessage
+        friendshipId: FriendshipId, message: UserMessage,
     ): List<RelevantText> = classify(message, friendshipId, "list")
 
     /**
@@ -46,7 +47,7 @@ class TimeBasedReminderClassifierUsingLlm(
      * using a custom LLM prompt.
      */
     override suspend fun extractUpdateReminders(
-        friendshipId: FriendshipId, message: UserMessage
+        friendshipId: FriendshipId, message: UserMessage,
     ): List<RelevantText> {
         val prompt = AiUserMessage(
             """
@@ -83,7 +84,7 @@ Message:
         )
 
         val zone = friendshipLedger.findBy(friendshipId)?.timeZone ?: ZoneId.of("UTC")
-        val options = OllamaOptions.builder().model(ADVANCED_MODEL).temperature(0.1).build()
+        val options = OllamaOptions.builder().model(complexTaskModel).temperature(0.1).build()
         return llmClient.promptReceivingJson(
             listOf(prompt), options, zone, message.receivedAt
         )?.let { parseRelevantText(it) } ?: emptyList()
@@ -96,7 +97,7 @@ Message:
             listOf(
                 SystemMessage(CLASSIFICATION_SYSTEM_PROMPT), AiUserMessage(buildPrompt(message.text, action))
             ),
-            OllamaOptions.builder().model(ADVANCED_MODEL).temperature(0.0).topP(0.8).build(),
+            OllamaOptions.builder().model(complexTaskModel).temperature(0.0).topP(0.8).build(),
             timezone,
             message.receivedAt
         )?.let { parseRelevantText(it) } ?: emptyList()

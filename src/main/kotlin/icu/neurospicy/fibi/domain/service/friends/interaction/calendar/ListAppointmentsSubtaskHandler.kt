@@ -7,7 +7,6 @@ import icu.neurospicy.fibi.domain.repository.CalendarConfigurationRepository
 import icu.neurospicy.fibi.domain.repository.CalendarRepository
 import icu.neurospicy.fibi.domain.repository.FriendshipLedger
 import icu.neurospicy.fibi.domain.repository.TimeRange
-import icu.neurospicy.fibi.domain.service.friends.ADVANCED_MODEL
 import icu.neurospicy.fibi.domain.service.friends.interaction.*
 import icu.neurospicy.fibi.domain.service.friends.tools.CalendarTools
 import icu.neurospicy.fibi.outgoing.ollama.LlmClient
@@ -29,6 +28,7 @@ class ListAppointmentsSubtaskHandler(
     private val calendarConfigurationRepository: CalendarConfigurationRepository,
     private val llmClient: LlmClient,
     private val objectMapper: ObjectMapper,
+    private val complexTaskModel: String,
 ) : SubtaskHandler {
 
     override fun canHandle(intent: Intent): Boolean = intent == CalendarIntents.ListAppointments
@@ -124,7 +124,7 @@ ISO format: $now
     ): SubtaskResult {
         val response = llmClient.promptReceivingText(
             listOf(SystemMessage(prompt), UserMessage(rawText)),
-            OllamaOptions.builder().model("[MODEL_NAME]").temperature(0.0).topP(0.7).build(),
+            OllamaOptions.builder().model(complexTaskModel).temperature(0.0).topP(0.7).build(),
             timezone,
             messageTime,
             tools = setOf(
@@ -187,7 +187,7 @@ ISO format: $now
         val timeRangeJson = try {
             llmClient.promptReceivingJson(
                 listOf(UserMessage(prompt)),
-                OllamaOptions.builder().model(ADVANCED_MODEL).temperature(0.0).topP(0.8).build(),
+                OllamaOptions.builder().model(complexTaskModel).temperature(0.0).topP(0.8).build(),
                 timezone,
                 messageTime
             ) ?: throw Exception("Failed to resolve specific time range.")

@@ -55,7 +55,7 @@ internal class ResponseGeneratorTest {
     fun `publishes message generation events when adapting message`() = runBlocking {
         val responseGenerator = ResponseGenerator(
             llmClient, chatRepository, applicationEventPublisher, friendshipLedger,
-            mockk(), mockk(), mockk(relaxed = true), mockk(), mockk(relaxed = true),
+            mockk(), mockk(), mockk(relaxed = true), mockk(), mockk(relaxed = true), "fibi64"
         )
         val message = OutgoingGeneratedMessage(SIGNAL, "Answer like an elephant talking to a 5 year old hot dog")
         every { applicationEventPublisher.publishEvent(any<MessageGenerationStarted>()) } just runs
@@ -99,7 +99,7 @@ internal class ResponseGeneratorTest {
                 mockk(),
                 mockk(relaxed = true),
                 mockk(),
-                mockk(relaxed = true),
+                mockk(relaxed = true), "fibi64"
             )
         val message =
             OutgoingAdaptedTextMessage(SIGNAL, "Don't be shy. Shout the message out like a dinosaur!", "Hi")

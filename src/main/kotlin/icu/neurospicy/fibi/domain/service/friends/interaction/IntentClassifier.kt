@@ -18,7 +18,11 @@ import java.time.ZoneOffset
 
 @Service
 class IntentClassifier(
-    private val llmClient: LlmClient, private val intentRegistry: IntentRegistry, private val objectMapper: ObjectMapper
+    private val llmClient: LlmClient, 
+    private val intentRegistry: IntentRegistry, 
+    private val objectMapper: ObjectMapper,
+    private val defaultModel: String,
+    private val complexTaskModel: String
 ) {
     data class IntentClassification(val intent: Intent, val confidence: Float)
 
@@ -89,7 +93,7 @@ Example:
                 listOf(
                     UserMessage(prompt)
                 ),
-                OllamaOptions.builder().model("[MODEL_NAME]").temperature(0.0).topP(0.3).build(),
+                OllamaOptions.builder().model(defaultModel).temperature(0.0).topP(0.3).build(),
                 ZoneOffset.UTC,
                 Instant.now()
             ) ?: "[]"
@@ -115,7 +119,7 @@ Example:
     
     Answer only: yes or no"""
             )
-        ), OllamaOptions.builder().model("[MODEL_NAME]").temperature(0.0).topP(0.7).build(), ZoneOffset.UTC, Instant.now()
+        ), OllamaOptions.builder().model(complexTaskModel).temperature(0.0).topP(0.7).build(), ZoneOffset.UTC, Instant.now()
     )?.lowercase()?.startsWith("yes") == true
 
     private fun parseIntentClassification(

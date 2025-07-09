@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import icu.neurospicy.fibi.domain.model.FibiMessage
 import icu.neurospicy.fibi.domain.model.Message
 import icu.neurospicy.fibi.domain.model.UserMessage
-import icu.neurospicy.fibi.domain.service.friends.ADVANCED_MODEL
+
 import icu.neurospicy.fibi.domain.service.friends.communication.FriendStateAnalysisResult
 import icu.neurospicy.fibi.domain.service.friends.communication.FriendStateAnalyzer
 import org.springframework.ai.chat.messages.SystemMessage
@@ -17,6 +17,7 @@ import java.time.ZoneOffset
 class FriendStateAnalyzerUsingOllama(
     private val llmClient: LlmClient,
     private val objectMapper: ObjectMapper,
+    private val complexTaskModel: String,
 ) : FriendStateAnalyzer {
     override suspend fun analyze(
         messages: List<Message>,
@@ -34,7 +35,7 @@ class FriendStateAnalyzerUsingOllama(
 
         val json = llmClient.promptReceivingJson(
             listOf(SystemMessage(systemPrompt), org.springframework.ai.chat.messages.UserMessage(prompt)),
-            OllamaOptions.builder().model(ADVANCED_MODEL).temperature(0.0).topP(0.8).build(),
+            OllamaOptions.builder().model(complexTaskModel).temperature(0.0).topP(0.8).build(),
             ZoneOffset.UTC, Instant.now()
         )
         return objectMapper.readValue(json, FriendStateAnalysisResult::class.java)

@@ -27,7 +27,8 @@ class CalendarPlanningInteraction(
     private val llmClient: LlmClient,
     eventPublisher: ApplicationEventPublisher,
     private val conversationRepository: ConversationRepository,
-    private val promptsConfiguration: PromptsConfiguration
+    private val promptsConfiguration: PromptsConfiguration,
+    private val defaultModel: String
 ) : AbstractInteraction(eventPublisher) {
 
     override suspend fun processUserRequestWithLlm(
@@ -44,7 +45,7 @@ class CalendarPlanningInteraction(
 
         return (llmClient.promptReceivingText((conversationRepository.findByFriendshipId(friendshipId)?.messages?.map { it.toLlmMessage() }
             ?: emptyList()).plus(SystemMessage(promptText)).plus(UserMessage(message.text)),
-            OllamaOptions.builder().model(BASE_MODEL).temperature(0.1).numPredict(4096).build(),
+            OllamaOptions.builder().model(defaultModel).temperature(0.1).numPredict(4096).build(),
             timezone,
             message.receivedAt,
             tools = setOf(

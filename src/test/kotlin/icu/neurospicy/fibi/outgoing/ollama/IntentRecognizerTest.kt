@@ -49,7 +49,7 @@ internal class IntentRecognizerTest {
             mockk(relaxed = true),
             ObjectMapper().registerModule(KotlinModule.Builder().build()),
             mockk(relaxed = true),
-            mockk(relaxed = true),
+            mockk(relaxed = true), "fibi64"
         )
         every { applicationEventPublisher.publishEvent(any<IntentRecognitionStarted>()) } returns Unit
         every { applicationEventPublisher.publishEvent(any<IntentRecognitionFinished>()) } returns Unit

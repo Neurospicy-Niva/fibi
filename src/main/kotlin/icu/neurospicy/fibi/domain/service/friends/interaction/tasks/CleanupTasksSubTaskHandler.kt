@@ -5,7 +5,7 @@ import icu.neurospicy.fibi.domain.model.FriendshipId
 import icu.neurospicy.fibi.domain.model.UserMessage
 import icu.neurospicy.fibi.domain.repository.FriendshipLedger
 import icu.neurospicy.fibi.domain.repository.TaskRepository
-import icu.neurospicy.fibi.domain.service.friends.ADVANCED_MODEL
+
 import icu.neurospicy.fibi.domain.service.friends.interaction.*
 import icu.neurospicy.fibi.outgoing.ollama.LlmClient
 import org.springframework.ai.ollama.api.OllamaOptions
@@ -19,6 +19,7 @@ class CleanupTasksSubTaskHandler(
     private val friendshipLedger: FriendshipLedger,
     private val llmClient: LlmClient,
     private val objectMapper: ObjectMapper,
+    private val complexTaskModel: String,
 ) : SubtaskHandler {
     override fun canHandle(intent: Intent): Boolean = intent == TaskIntents.Cleanup
 
@@ -76,7 +77,7 @@ ${answer.text}
 No explanation. Just respond the JSON object.
         """.trimIndent()
                 )
-            ), OllamaOptions.builder().model(ADVANCED_MODEL).temperature(0.0).topP(0.8).build(), timezone, messageTime
+            ), OllamaOptions.builder().model(complexTaskModel).temperature(0.0).topP(0.8).build(), timezone, messageTime
         )
 
         val jsonNodes = objectMapper.readTree(resultJson)

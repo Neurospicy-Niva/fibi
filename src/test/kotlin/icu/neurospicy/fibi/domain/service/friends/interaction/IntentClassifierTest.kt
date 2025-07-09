@@ -37,7 +37,7 @@ class IntentClassifierTest {
     fun setup() {
         objectMapper = jacksonObjectMapper()
 
-        intentClassifier = IntentClassifier(llmClient, intentRegistry, objectMapper)
+        intentClassifier = IntentClassifier(llmClient, intentRegistry, objectMapper, "fibi64", "fibi64")
     }
 
     @Test

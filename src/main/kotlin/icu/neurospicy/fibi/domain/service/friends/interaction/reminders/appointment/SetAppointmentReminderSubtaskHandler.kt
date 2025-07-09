@@ -9,7 +9,7 @@ import icu.neurospicy.fibi.domain.repository.CalendarRepository
 import icu.neurospicy.fibi.domain.repository.FriendshipLedger
 import icu.neurospicy.fibi.domain.repository.ReminderRepository
 import icu.neurospicy.fibi.domain.repository.TimeRange
-import icu.neurospicy.fibi.domain.service.friends.ADVANCED_MODEL
+
 import icu.neurospicy.fibi.domain.service.friends.interaction.*
 import icu.neurospicy.fibi.outgoing.ollama.LlmClient
 import org.springframework.ai.chat.messages.SystemMessage
@@ -35,6 +35,7 @@ class SetAppointmentReminderSubtaskHandler(
     private val reminderRepository: ReminderRepository,
     friendshipLedger: FriendshipLedger,
     private val calendarRepository: CalendarRepository,
+    private val complexTaskModel: String,
 ) : CrudSubtaskHandler<NewAppointmentReminderInformation, AppointmentReminder>(
     intent = AppointmentReminderIntents.Set,
     entityHandler = object : CrudEntityHandler<NewAppointmentReminderInformation, AppointmentReminder> {
@@ -95,7 +96,7 @@ $rawText
 
             val jsonOffset = llmClient.promptReceivingJson(
                 listOf(SystemMessage(systemPromptOffset), UserMessage(userPromptOffset)),
-                OllamaOptions.builder().model(ADVANCED_MODEL).temperature(0.0).topP(0.8).build(),
+                OllamaOptions.builder().model(complexTaskModel).temperature(0.0).topP(0.8).build(),
                 timezone,
                 messageTime
             )
@@ -155,7 +156,7 @@ $rawText
 
             val jsonText = llmClient.promptReceivingJson(
                 listOf(SystemMessage(systemPromptText), UserMessage(userPromptText)),
-                OllamaOptions.builder().model(ADVANCED_MODEL).temperature(0.0).topP(0.8).build(),
+                OllamaOptions.builder().model(complexTaskModel).temperature(0.0).topP(0.8).build(),
                 timezone,
                 messageTime
             )
@@ -197,7 +198,7 @@ $rawText
 
             val jsonKeywords = llmClient.promptReceivingJson(
                 listOf(SystemMessage(systemPromptKeywords), UserMessage(userPromptKeywords)),
-                OllamaOptions.builder().model(ADVANCED_MODEL).temperature(0.0).topP(0.8).build(),
+                OllamaOptions.builder().model(complexTaskModel).temperature(0.0).topP(0.8).build(),
                 timezone,
                 messageTime
             )

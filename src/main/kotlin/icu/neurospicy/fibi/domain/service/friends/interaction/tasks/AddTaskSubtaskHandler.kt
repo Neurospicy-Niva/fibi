@@ -7,7 +7,7 @@ import icu.neurospicy.fibi.domain.model.MessageId
 import icu.neurospicy.fibi.domain.model.Task
 import icu.neurospicy.fibi.domain.repository.FriendshipLedger
 import icu.neurospicy.fibi.domain.repository.TaskRepository
-import icu.neurospicy.fibi.domain.service.friends.ADVANCED_MODEL
+
 import icu.neurospicy.fibi.domain.service.friends.interaction.*
 import icu.neurospicy.fibi.outgoing.ollama.LlmClient
 import org.springframework.ai.chat.messages.UserMessage
@@ -22,6 +22,7 @@ class AddTaskSubtaskHandler(
     private val objectMapper: ObjectMapper,
     private val taskRepository: TaskRepository,
     val friendshipLedger: FriendshipLedger,
+    private val complexTaskModel: String,
 ) : CrudSubtaskHandler<NewTaskInformation, Task>(
     intent = TaskIntents.Add, entityHandler = object : CrudEntityHandler<NewTaskInformation, Task> {
 
@@ -85,7 +86,7 @@ class AddTaskSubtaskHandler(
 
             val resultJson = llmClient.promptReceivingJson(
                 listOf(UserMessage(prompt)),
-                OllamaOptions.builder().model(ADVANCED_MODEL).temperature(0.0).topP(0.8).build(),
+                OllamaOptions.builder().model(complexTaskModel).temperature(0.0).topP(0.8).build(),
                 timezone,
                 messageTime
             ) ?: return ExtractionResult()

@@ -20,6 +20,7 @@ class ReminderGoalDeterminator(
     private val llmClient: LlmClient,
     private val friendshipLedger: FriendshipLedger,
     private val objectMapper: ObjectMapper,
+    private val defaultModel: String,
 ) : GoalDeterminator {
     val reminderIntents = setOf(
         ReminderIntents.Set,
@@ -96,7 +97,7 @@ Output must be a JSON object like this:
                 ),
                 org.springframework.ai.chat.messages.UserMessage(message.text)
             ),
-            OllamaOptions.builder().model("[MODEL_NAME]").temperature(0.0).topP(0.3).build(),
+            OllamaOptions.builder().model(defaultModel).temperature(0.0).topP(0.3).build(),
             friendshipLedger.findBy(friendshipId)?.timeZone ?: ZoneOffset.UTC,
             message.receivedAt
         )

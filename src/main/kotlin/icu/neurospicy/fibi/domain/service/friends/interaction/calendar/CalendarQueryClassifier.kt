@@ -1,7 +1,5 @@
 package icu.neurospicy.fibi.domain.service.friends.interaction.calendar
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import icu.neurospicy.fibi.domain.service.friends.ADVANCED_MODEL
 import icu.neurospicy.fibi.outgoing.ollama.LlmClient
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.ollama.api.OllamaOptions
@@ -12,10 +10,10 @@ import java.time.ZoneId
 @Component
 class CalendarQueryClassifier(
     private val llmClient: LlmClient,
-    private val objectMapper: ObjectMapper,
+    private val complexTaskModel: String,
 ) {
     suspend fun classify(
-        message: String, timezone: ZoneId, receivedAt: Instant
+        message: String, timezone: ZoneId, receivedAt: Instant,
     ): ParsedCalendarQuery {
         if (message.isBlank()) return ParsedCalendarQuery(CalendarQueryCategory.NoSearch)
         val prompt = """
@@ -36,7 +34,7 @@ User query:
 """.trimIndent()
         val json = llmClient.promptReceivingText(
             listOf(UserMessage(prompt)),
-            OllamaOptions.builder().model(ADVANCED_MODEL).temperature(0.0).topP(0.8).build(),
+            OllamaOptions.builder().model(complexTaskModel).temperature(0.0).topP(0.8).build(),
             timezone,
             receivedAt
         ) ?: return ParsedCalendarQuery(category = CalendarQueryCategory.KeywordSearch)
@@ -46,7 +44,7 @@ User query:
 }
 
 data class ParsedCalendarQuery(
-    val category: CalendarQueryCategory, val keywords: List<String> = emptyList(), val timeHint: String? = null
+    val category: CalendarQueryCategory, val keywords: List<String> = emptyList(), val timeHint: String? = null,
 )
 
 enum class CalendarQueryCategory {

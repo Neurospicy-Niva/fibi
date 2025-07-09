@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import icu.neurospicy.fibi.domain.model.FriendshipId
 import icu.neurospicy.fibi.domain.model.UserMessage
 import icu.neurospicy.fibi.domain.repository.FriendshipLedger
-import icu.neurospicy.fibi.domain.service.friends.ADVANCED_MODEL
+
 import icu.neurospicy.fibi.domain.service.friends.interaction.*
 import icu.neurospicy.fibi.outgoing.ollama.LlmClient
 import org.springframework.ai.ollama.api.OllamaOptions
@@ -22,6 +22,7 @@ class SelectRoutineSubtaskHandler(
     private val llmClient: LlmClient,
     private val friendshipLedger: FriendshipLedger,
     private val objectMapper: ObjectMapper,
+    private val complexTaskModel: String,
 ) : SubtaskHandler {
     override fun canHandle(intent: Intent): Boolean {
         return intent == RoutineIntents.Select
@@ -42,7 +43,7 @@ class SelectRoutineSubtaskHandler(
 
         val llmResponse = llmClient.promptReceivingJson(
             listOf(AiUserMessage(prompt)),
-            OllamaOptions.builder().model(ADVANCED_MODEL).temperature(0.0).topP(0.7).build(),
+            OllamaOptions.builder().model(complexTaskModel).temperature(0.0).topP(0.7).build(),
             friendshipLedger.findTimezoneBy(friendshipId) ?: ZoneOffset.UTC,
             context.originalMessage?.receivedAt ?: Instant.now()
         )?.takeIf { it.isNotBlank() } ?: return SubtaskResult.failure("LLM failed", subtask)
@@ -100,7 +101,7 @@ class SelectRoutineSubtaskHandler(
 
         val llmResponse = llmClient.promptReceivingJson(
             listOf(AiUserMessage(prompt)),
-            OllamaOptions.builder().model(ADVANCED_MODEL).temperature(0.0).topP(0.7).build(),
+            OllamaOptions.builder().model(complexTaskModel).temperature(0.0).topP(0.7).build(),
             friendshipLedger.findTimezoneBy(friendshipId) ?: ZoneOffset.UTC,
             context.originalMessage?.receivedAt ?: Instant.now()
         )?.takeIf { it.isNotBlank() } ?: return SubtaskClarificationResult.failure("LLM failed", subtask)

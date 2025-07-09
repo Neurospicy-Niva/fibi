@@ -38,7 +38,7 @@ class GoalRefinerTest {
         objectMapper = mockk(relaxed = true)
 
         goalRefiner = GoalRefiner(
-            llmClient, friendshipLedger, subtaskRegistry, intentRegistry, objectMapper, emptyList()
+            llmClient, friendshipLedger, subtaskRegistry, intentRegistry, objectMapper, emptyList(), "fibi64"
         )
 
         // Default mock setup

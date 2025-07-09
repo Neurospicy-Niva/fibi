@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import icu.neurospicy.fibi.domain.model.FriendshipId
 import icu.neurospicy.fibi.domain.model.UserMessage
 import icu.neurospicy.fibi.domain.repository.FriendshipLedger
-import icu.neurospicy.fibi.domain.service.friends.ADVANCED_MODEL
+
 import icu.neurospicy.fibi.domain.service.friends.interaction.RelevantText
 import icu.neurospicy.fibi.outgoing.ollama.LlmClient
 import org.springframework.ai.ollama.api.OllamaOptions
@@ -25,10 +25,11 @@ interface TaskClassifier {
 class LlmTaskClassifier(
     private val llmClient: LlmClient,
     private val friendshipLedger: FriendshipLedger,
-    private val objectMapper: ObjectMapper
+    private val objectMapper: ObjectMapper,
+    private val complexTaskModel: String,
 ) : TaskClassifier {
 
-    private val options = OllamaOptions.builder().model(ADVANCED_MODEL).temperature(0.1).build()
+    private val options = OllamaOptions.builder().model(complexTaskModel).temperature(0.1).build()
 
     override suspend fun extractAddTasks(friendshipId: FriendshipId, message: UserMessage): List<RelevantText> {
         return extractTasks("add", friendshipId, message)
@@ -53,7 +54,7 @@ class LlmTaskClassifier(
     private suspend fun extractTasks(
         action: String,
         friendshipId: FriendshipId,
-        message: UserMessage
+        message: UserMessage,
     ): List<RelevantText> {
         val promptText = when (action) {
             "add" -> """

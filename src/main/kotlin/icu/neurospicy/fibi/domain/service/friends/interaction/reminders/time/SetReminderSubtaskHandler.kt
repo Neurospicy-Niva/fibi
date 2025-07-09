@@ -27,6 +27,7 @@ class SetReminderSubtaskHandler(
     private val objectMapper: ObjectMapper,
     private val reminderRepository: ReminderRepository,
     private val friendshipLedger: FriendshipLedger,
+    private val complexTaskModel: String,
 ) : CrudSubtaskHandler<NewReminderInformation, Reminder>(
     intent = ReminderIntents.Set,
     entityHandler = object : CrudEntityHandler<NewReminderInformation, Reminder> {
@@ -99,7 +100,7 @@ For simplification, you MAY use local date time format without timezone.
 
             val resultJson = llmClient.promptReceivingJson(
                 listOf(SystemMessage(systemPrompt), UserMessage(userPrompt)),
-                OllamaOptions.builder().model("[MODEL_NAME]").temperature(0.0).topP(0.8).build(),
+                OllamaOptions.builder().model(complexTaskModel).temperature(0.0).topP(0.8).build(),
                 timezone,
                 messageTime
             ) ?: return ExtractionResult()

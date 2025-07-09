@@ -22,6 +22,7 @@ class UpdateReminderSubtaskHandler(
     private val objectMapper: ObjectMapper,
     private val reminderRepository: ReminderRepository,
     friendshipLedger: FriendshipLedger,
+    private val complexTaskModel: String,
 ) : CrudSubtaskHandler<UpdatedReminderInformation, Reminder>(
     intent = ReminderIntents.Update, entityHandler = object : CrudEntityHandler<UpdatedReminderInformation, Reminder> {
         override suspend fun identifyEntityId(
@@ -55,7 +56,7 @@ class UpdateReminderSubtaskHandler(
 
             val resultJson = llmClient.promptReceivingJson(
                 listOf(UserMessage(prompt)),
-                OllamaOptions.builder().model("[MODEL_NAME]").temperature(0.0).topP(0.8).build(),
+                OllamaOptions.builder().model(complexTaskModel).temperature(0.0).topP(0.8).build(),
                 timezone,
                 messageTime
             ) ?: return ClarifiedIdResolutionResult()
@@ -118,7 +119,7 @@ For simplification, you MAY use local date time format without timezone.
 """.trimIndent()
             val resultJson = llmClient.promptReceivingJson(
                 listOf(SystemMessage(systemPrompt), UserMessage(userPrompt)),
-                OllamaOptions.builder().model("[MODEL_NAME]").temperature(0.0).topP(0.8).build(),
+                OllamaOptions.builder().model(complexTaskModel).temperature(0.0).topP(0.8).build(),
                 timezone,
                 messageTime
             ) ?: return ExtractionResult()

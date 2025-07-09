@@ -21,6 +21,7 @@ class TimezoneSubtaskHandler(
     private val llmClient: LlmClient,
     private val objectMapper: ObjectMapper,
     private val applicationEventPublisher: ApplicationEventPublisher,
+    private val defaultModel: String,
 ) : SubtaskHandler {
     override fun canHandle(intent: Intent): Boolean {
         return intent in TimezoneIntents.AllTimezoneIntents
@@ -51,7 +52,7 @@ Return JSON with result:
                     SystemMessage(systemPrompt),
                     org.springframework.ai.chat.messages.UserMessage(subtask.parameters["rawText"].toString())
                 ),
-                OllamaOptions.builder().model("[MODEL_NAME]").temperature(0.0).topP(0.3).build(),
+                OllamaOptions.builder().model(defaultModel).temperature(0.0).topP(0.3).build(),
                 timezone,
                 context.originalMessage?.receivedAt ?: Instant.now(),
                 tools = setOf(FriendSettingsTools(friendshipLedger, friendshipId, applicationEventPublisher))

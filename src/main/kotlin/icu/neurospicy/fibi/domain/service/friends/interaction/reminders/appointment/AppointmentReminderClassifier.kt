@@ -5,7 +5,6 @@ import com.fasterxml.jackson.module.kotlin.readValue
 import icu.neurospicy.fibi.domain.model.FriendshipId
 import icu.neurospicy.fibi.domain.model.UserMessage
 import icu.neurospicy.fibi.domain.repository.FriendshipLedger
-import icu.neurospicy.fibi.domain.service.friends.ADVANCED_MODEL
 import icu.neurospicy.fibi.domain.service.friends.interaction.RelevantText
 import icu.neurospicy.fibi.outgoing.ollama.LlmClient
 import org.slf4j.LoggerFactory
@@ -26,19 +25,20 @@ interface AppointmentReminderClassifier {
 class AppointmentReminderClassifierUsingLlm(
     private val llmClient: LlmClient,
     private val objectMapper: ObjectMapper,
-    private val friendshipLedger: FriendshipLedger
+    private val friendshipLedger: FriendshipLedger,
+    private val complexTaskModel: String,
 ) : AppointmentReminderClassifier {
 
     override suspend fun extractSetReminders(
-        friendshipId: FriendshipId, message: UserMessage
+        friendshipId: FriendshipId, message: UserMessage,
     ): List<RelevantText> = classify(message, friendshipId, "set")
 
     override suspend fun extractRemoveReminders(
-        friendshipId: FriendshipId, message: UserMessage
+        friendshipId: FriendshipId, message: UserMessage,
     ): List<RelevantText> = classify(message, friendshipId, "remove")
 
     override suspend fun extractListReminders(
-        friendshipId: FriendshipId, message: UserMessage
+        friendshipId: FriendshipId, message: UserMessage,
     ): List<RelevantText> = extractListRemindersSpecial(friendshipId, message)
 
     /**
@@ -46,7 +46,7 @@ class AppointmentReminderClassifierUsingLlm(
      * using a custom LLM prompt.
      */
     override suspend fun extractUpdateReminders(
-        friendshipId: FriendshipId, message: UserMessage
+        friendshipId: FriendshipId, message: UserMessage,
     ): List<RelevantText> = extractUpdateRemindersSpecial(friendshipId, message)
 
     /**
@@ -55,7 +55,7 @@ class AppointmentReminderClassifierUsingLlm(
     suspend fun classify(
         message: UserMessage,
         friendshipId: FriendshipId,
-        action: String
+        action: String,
     ): List<RelevantText> {
         val timezone = friendshipLedger.findBy(friendshipId)?.timeZone ?: ZoneId.of("UTC")
         return llmClient.promptReceivingJson(
@@ -63,7 +63,7 @@ class AppointmentReminderClassifierUsingLlm(
                 SystemMessage(CLASSIFICATION_SYSTEM_PROMPT),
                 AiUserMessage(buildPrompt(message.text, action))
             ),
-            OllamaOptions.builder().model(ADVANCED_MODEL).temperature(0.0).topP(0.8).build(),
+            OllamaOptions.builder().model(complexTaskModel).temperature(0.0).topP(0.8).build(),
             timezone,
             message.receivedAt
         )?.let { parseRelevantText(it) } ?: emptyList()
@@ -74,7 +74,7 @@ class AppointmentReminderClassifierUsingLlm(
      */
     private suspend fun extractUpdateRemindersSpecial(
         friendshipId: FriendshipId,
-        message: UserMessage
+        message: UserMessage,
     ): List<RelevantText> {
         val prompt = AiUserMessage(
             """
@@ -111,7 +111,7 @@ Message:
             """.trimIndent()
         )
         val zone = friendshipLedger.findBy(friendshipId)?.timeZone ?: ZoneId.of("UTC")
-        val options = OllamaOptions.builder().model(ADVANCED_MODEL).temperature(0.1).build()
+        val options = OllamaOptions.builder().model(complexTaskModel).temperature(0.1).build()
         return llmClient.promptReceivingJson(
             listOf(prompt), options, zone, message.receivedAt
         )?.let { parseRelevantText(it) } ?: emptyList()
@@ -122,7 +122,7 @@ Message:
      */
     private suspend fun extractListRemindersSpecial(
         friendshipId: FriendshipId,
-        message: UserMessage
+        message: UserMessage,
     ): List<RelevantText> {
         val prompt = AiUserMessage(
             """
@@ -151,7 +151,7 @@ Message:
             """.trimIndent()
         )
         val zone = friendshipLedger.findBy(friendshipId)?.timeZone ?: ZoneId.of("UTC")
-        val options = OllamaOptions.builder().model(ADVANCED_MODEL).temperature(0.1).build()
+        val options = OllamaOptions.builder().model(complexTaskModel).temperature(0.1).build()
         return llmClient.promptReceivingJson(
             listOf(prompt), options, zone, message.receivedAt
         )?.let { parseRelevantText(it) } ?: emptyList()
