@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component
 object CalendarIntents {
     val Register = Intent("RegisterCalendar")
     val Remove = Intent("RemoveCalendar")
-    val Show = Intent("ListCalendars")
+    val ListAppointments = Intent("ListAppointments")
 }
 
 @Component
@@ -25,6 +25,6 @@ class RemoveCalendarIntentContributor : IntentContributor {
 
 @Component
 class ShowCalendarsIntentContributor : IntentContributor {
-    override fun intent(): Intent = CalendarIntents.Show
-    override fun description(): String = "Show all (registered) calendars"
+    override fun intent(): Intent = CalendarIntents.ListAppointments
+    override fun description(): String = "Show appointments in the calendar"
 }

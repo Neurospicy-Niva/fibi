@@ -120,13 +120,13 @@ class ListAppointmentsSubtaskHandlerAIT : BaseAIT() {
         )
 
         val subtask = Subtask(
-            SubtaskId("appt-${UUID.randomUUID()}"), CalendarIntents.Show, messageText, parameters = mapOf(
+            SubtaskId("appt-${UUID.randomUUID()}"), CalendarIntents.ListAppointments, messageText, parameters = mapOf(
                 "rawText" to messageText,
                 "queryCategory" to category,
             )
         )
         val context = GoalContext(
-            Goal(CalendarIntents.Show), originalMessage = userMessage, subtasks = listOf(subtask)
+            Goal(CalendarIntents.ListAppointments), originalMessage = userMessage, subtasks = listOf(subtask)
         )
         val (text, clarification, updatedSubtask) = listAppointmentsSubtaskHandler.handle(
             subtask, context, friendshipId

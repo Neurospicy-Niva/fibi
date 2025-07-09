@@ -14,7 +14,7 @@ class RegisterCalendarSubtaskContributor : SubtaskContributor {
     override fun forIntent(): Intent = CalendarIntents.Register
 
     override suspend fun provideSubtasks(
-        intent: Intent, friendshipId: FriendshipId, message: UserMessage
+        intent: Intent, friendshipId: FriendshipId, message: UserMessage,
     ): List<Subtask> {
         return listOf(
             Subtask(
@@ -30,12 +30,12 @@ class RegisterCalendarSubtaskContributor : SubtaskContributor {
 
 @Component
 class CalendarQuerySubtaskContributor(
-    private val classifier: CalendarQueryClassifier
+    private val classifier: CalendarQueryClassifier,
 ) : SubtaskContributor {
-    override fun forIntent(): Intent = CalendarIntents.Show
+    override fun forIntent(): Intent = CalendarIntents.ListAppointments
 
     override suspend fun provideSubtasks(
-        intent: Intent, friendshipId: FriendshipId, message: UserMessage
+        intent: Intent, friendshipId: FriendshipId, message: UserMessage,
     ): List<Subtask> {
         val classification = classifier.classify(
             message = message.text,

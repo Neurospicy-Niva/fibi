@@ -15,11 +15,8 @@ import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.ollama.api.OllamaOptions
 import org.springframework.stereotype.Component
-import java.time.Duration
-import java.time.Instant
-import java.time.ZoneId
+import java.time.*
 import java.time.ZoneOffset.UTC
-import java.time.ZonedDateTime
 import java.time.ZonedDateTime.now
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -34,10 +31,10 @@ class ListAppointmentsSubtaskHandler(
     private val objectMapper: ObjectMapper,
 ) : SubtaskHandler {
 
-    override fun canHandle(intent: Intent): Boolean = intent == CalendarIntents.Show
+    override fun canHandle(intent: Intent): Boolean = intent == CalendarIntents.ListAppointments
 
     override suspend fun handle(
-        subtask: Subtask, context: GoalContext, friendshipId: FriendshipId
+        subtask: Subtask, context: GoalContext, friendshipId: FriendshipId,
     ): SubtaskResult {
         val friend =
             friendshipLedger.findBy(friendshipId) ?: return SubtaskResult.failure("Missing friendship data", subtask)
@@ -91,7 +88,7 @@ ISO format: $now
         timezone: ZoneId,
         messageTime: Instant,
         subtask: Subtask,
-        friendshipId: FriendshipId
+        friendshipId: FriendshipId,
     ): SubtaskResult {
         val prompt =
             if (category == CalendarQueryCategory.SpecificTimeRange) buildSpecificTimeRangePrompt(rawText, dateContext)
@@ -123,7 +120,7 @@ ISO format: $now
         friendshipId: FriendshipId,
         rawText: String,
         messageTime: Instant,
-        subtask: Subtask
+        subtask: Subtask,
     ): SubtaskResult {
         val response = llmClient.promptReceivingText(
             listOf(SystemMessage(prompt), UserMessage(rawText)),
@@ -159,7 +156,7 @@ ISO format: $now
         timezone: ZoneId,
         messageTime: Instant,
         subtask: Subtask,
-        friendshipId: FriendshipId
+        friendshipId: FriendshipId,
     ): SubtaskResult {
         val prompt = if (category == CalendarQueryCategory.KeywordInSpecificTimeRange) buildSpecificTimeRangePrompt(
             rawText, dateContext
@@ -185,7 +182,7 @@ ISO format: $now
     }
 
     private suspend fun determineAndLoadAppointmentsForTimeRange(
-        friendshipId: FriendshipId, prompt: String, timezone: ZoneId, messageTime: Instant
+        friendshipId: FriendshipId, prompt: String, timezone: ZoneId, messageTime: Instant,
     ): List<Appointment> {
         val timeRangeJson = try {
             llmClient.promptReceivingJson(
@@ -201,8 +198,8 @@ ISO format: $now
         val start: Instant
         val end: Instant
         try {
-            start = objectMapper.readTree(timeRangeJson).get("start")?.asText()?.let { Instant.parse(it) }!!
-            end = objectMapper.readTree(timeRangeJson).get("end")?.asText()?.let { Instant.parse(it) }!!
+            start = objectMapper.readTree(timeRangeJson).get("start")?.asText()?.let { parseDateTime(it, timezone) }!!
+            end = objectMapper.readTree(timeRangeJson).get("end")?.asText()?.let { parseDateTime(it, timezone) }!!
         } catch (e: Exception) {
             throw Exception("Failed to extract start and end from $timeRangeJson")
         }
@@ -216,10 +213,33 @@ ISO format: $now
         )
     }
 
+    private fun parseDateTime(dateTimeString: String, timezone: ZoneId): Instant {
+        try {
+            return Instant.parse(dateTimeString)
+        } catch (e: Exception) {
+        }
+
+        try {
+            return LocalDateTime.parse(dateTimeString).atZone(timezone).toInstant()
+        } catch (e: Exception) {
+        }
+
+        try {
+            return ZonedDateTime.parse(dateTimeString).toInstant()
+        } catch (e: Exception) {
+        }
+
+        try {
+            return OffsetDateTime.parse(dateTimeString).toInstant()
+        } catch (e: Exception) {
+        }
+        throw IllegalArgumentException("Cannot parse date time string $dateTimeString")
+    }
+
     // --- Prompt builders for each category ---
 
     private fun buildSpecificTimeRangePrompt(
-        rawText: String, dateContext: String
+        rawText: String, dateContext: String,
     ): String {
         return """
 You are helping to understand a calendar-related user request.
@@ -248,7 +268,7 @@ Return nulls if you're unsure. No chat, no explanation.
     }
 
     private fun buildRelativeTimeRangePrompt(
-        rawText: String, dateContext: String
+        rawText: String, dateContext: String,
     ): String {
         return """
 You are helping to resolve a relative time expression from a user calendar request.
@@ -281,7 +301,7 @@ Return nulls if you're unsure. No chat, no explanation.
     }
 
     private fun buildCombinedQueryPrompt(
-        timezone: ZoneId, friendshipId: FriendshipId
+        timezone: ZoneId, friendshipId: FriendshipId,
     ): String {
         val upcomingAppointments = calendarRepository.loadAppointmentsForTimeRange(
             TimeRange(now().minusMonths(3).toInstant(), Duration.ofDays(30 * 6)), friendshipId
@@ -295,7 +315,7 @@ Return nulls if you're unsure. No chat, no explanation.
     }
 
     private fun buildKeywordInTimeRangeQueryPrompt(
-        timezone: ZoneId, appointments: List<Appointment>
+        timezone: ZoneId, appointments: List<Appointment>,
     ): String {
         val currentDateTime = now(timezone)
         val formattedAppointments = formatAppointmentsForPrompt(appointments)
@@ -306,7 +326,7 @@ Return nulls if you're unsure. No chat, no explanation.
     }
 
     private fun buildPromptToDetermineIds(
-        currentDateTime: ZonedDateTime?, timezone: ZoneId, appointmentText: String
+        currentDateTime: ZonedDateTime?, timezone: ZoneId, appointmentText: String,
     ): String {
         val isoDateFormatter = DateTimeFormatter.ISO_DATE
         val simpleTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
@@ -363,7 +383,7 @@ No explanation, no chat!"""
         clarificationQuestion: SubtaskClarificationQuestion,
         answer: icu.neurospicy.fibi.domain.model.UserMessage,
         context: GoalContext,
-        friendshipId: FriendshipId
+        friendshipId: FriendshipId,
     ): SubtaskClarificationResult {
         return SubtaskClarificationResult.success(updatedSubtask = subtask)
     }
