@@ -50,13 +50,18 @@ class GoalRefiner(
         }
         val newGoals: Set<Goal> = determineGoalsFor(primaryIntents, message, friendshipId)
 
+        // user still wants to achieve old goal
+        if (newGoals.size == 1 && existingContext?.goal == newGoals.first()) return existingContext
+
         // Check if new message is compatible with existing goal
         val isCompatible = existingContext?.goal?.let { goal ->
             isCompatibleWith(goal.intent.name, message.text, newGoals, friendshipId)
         } ?: false
 
+        // gather subtasks for additional intents
         val subTasks =
-            newGoals.map { it.intent }.associateWith { subtaskRegistry.generateSubtasks(it, friendshipId, message) }
+            newGoals.map { it.intent }.filterNot { it == existingContext?.goal?.intent }
+                .associateWith { subtaskRegistry.generateSubtasks(it, friendshipId, message) }
 
         return when {
             isCompatible -> {
