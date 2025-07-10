@@ -18,11 +18,11 @@ import java.time.ZoneOffset
 
 @Service
 class IntentClassifier(
-    private val llmClient: LlmClient, 
-    private val intentRegistry: IntentRegistry, 
+    private val llmClient: LlmClient,
+    private val intentRegistry: IntentRegistry,
     private val objectMapper: ObjectMapper,
     private val defaultModel: String,
-    private val complexTaskModel: String
+    private val complexTaskModel: String,
 ) {
     data class IntentClassification(val intent: Intent, val confidence: Float)
 
@@ -39,7 +39,7 @@ Return a JSON array of objects with 'intent' and 'confidence' fields.
 Example:
 [
   { "intent": "<intent>", "confidence": 0.8 },
-  { "intent": "<intent>", "confidence": 0.75 },
+  { "intent": "<intent>", "confidence": 0.15 },
   { "intent": "<intent>", "confidence": 0.05 }
 ]
 
@@ -67,7 +67,7 @@ Return a JSON array of objects with 'intent' and 'confidence' fields.
 Example:
 [
   { "intent": "<intent>", "confidence": 0.8 },
-  { "intent": "<intent>", "confidence": 0.75 },
+  { "intent": "<intent>", "confidence": 0.15 },
   { "intent": "<intent>", "confidence": 0.05 }
 ]
         """.trimIndent()
@@ -108,22 +108,26 @@ Example:
     private suspend fun verifyIfAddingTaskIsHighlyIntended(message: Message): Boolean = llmClient.promptReceivingText(
         listOf(
             UserMessage(
-                """Does the user **clearly and explicitly** want to add a task to their task list?
+                """Does the user **clearly and explicitly** want to add a new task to their task list?
     
     Return only:
-    - yes → if the user gives a clear instruction to create a task (e.g. "Add a task to call the clinic")
+    - yes → if the user gives a clear instruction to create a new task (e.g. "Add a task to call the clinic")
     - no → in all other cases, including vague, indirect, or reminder-like expressions
+    - no → in all cases where the user wants to work on an existing task
     
     The user's message:
     "${message.text}"
     
     Answer only: yes or no"""
             )
-        ), OllamaOptions.builder().model(complexTaskModel).temperature(0.0).topP(0.7).build(), ZoneOffset.UTC, Instant.now()
+        ),
+        OllamaOptions.builder().model(complexTaskModel).temperature(0.0).topP(0.7).build(),
+        ZoneOffset.UTC,
+        Instant.now()
     )?.lowercase()?.startsWith("yes") == true
 
     private fun parseIntentClassification(
-        response: String, availableIntents: List<Intent>
+        response: String, availableIntents: List<Intent>,
     ): List<IntentClassification> {
         // Map of intent names to Intent objects for quick lookup
         val intentMap = availableIntents.associateBy { it.name }
