@@ -9,6 +9,7 @@ object TaskIntents {
     val List = Intent("ListTasks")
     val Complete = Intent("CompleteTask")
     val Update = Intent("UpdateTask")
+    val Rename = Intent("RenameTask")
     val Remove = Intent("RemoveTask")
     val Cleanup = Intent("CleanupTasks")
 }
@@ -16,7 +17,7 @@ object TaskIntents {
 @Component
 class AddTaskIntentContributor : IntentContributor {
     override fun intent(): Intent = TaskIntents.Add
-    override fun description(): String = "Add a task"
+    override fun description(): String = "Add a new task"
 }
 
 @Component
@@ -34,7 +35,13 @@ class CompleteTaskIntentContributor : IntentContributor {
 @Component
 class UpdateTaskIntentContributor : IntentContributor {
     override fun intent(): Intent = TaskIntents.Update
-    override fun description(): String = "Update task title or description"
+    override fun description(): String = "Update task description"
+}
+
+@Component
+class RenameTaskIntentContributor : IntentContributor {
+    override fun intent(): Intent = TaskIntents.Rename
+    override fun description(): String = "Rename a task"
 }
 
 @Component

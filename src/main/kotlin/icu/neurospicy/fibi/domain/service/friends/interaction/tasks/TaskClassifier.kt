@@ -134,6 +134,7 @@ Message:
                 - status (optional)
 
                 ❗ You may split and recombine text fragments if needed — but **do not change the meaning**.
+                👉 The relevant text needs to include information on the task(s) to $action 
 
                 Output a JSON array like:
                 [

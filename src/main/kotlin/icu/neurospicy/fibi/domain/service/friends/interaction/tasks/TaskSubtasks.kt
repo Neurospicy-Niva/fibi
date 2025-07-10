@@ -10,12 +10,12 @@ import org.springframework.stereotype.Component
 
 @Component
 class AddTaskSubtaskContributor(
-    private val taskClassifier: TaskClassifier
+    private val taskClassifier: TaskClassifier,
 ) : SubtaskContributor {
     override fun forIntent() = TaskIntents.Add
 
     override suspend fun provideSubtasks(
-        intent: Intent, friendshipId: FriendshipId, message: UserMessage
+        intent: Intent, friendshipId: FriendshipId, message: UserMessage,
     ): List<Subtask> {
         val extracted = taskClassifier.extractAddTasks(friendshipId, message)
         return extracted.map {
@@ -31,12 +31,12 @@ class AddTaskSubtaskContributor(
 
 @Component
 class ListTasksSubtaskContributor(
-    private val taskClassifier: TaskClassifier
+    private val taskClassifier: TaskClassifier,
 ) : SubtaskContributor {
     override fun forIntent() = TaskIntents.List
 
     override suspend fun provideSubtasks(
-        intent: Intent, friendshipId: FriendshipId, message: UserMessage
+        intent: Intent, friendshipId: FriendshipId, message: UserMessage,
     ): List<Subtask> {
         val extracted = taskClassifier.extractListTasks(friendshipId, message)
         val relevant = extracted.firstOrNull()?.relevantText
@@ -60,12 +60,12 @@ class ListTasksSubtaskContributor(
 
 @Component
 class CompleteTaskSubtaskContributor(
-    private val taskClassifier: TaskClassifier
+    private val taskClassifier: TaskClassifier,
 ) : SubtaskContributor {
     override fun forIntent() = TaskIntents.Complete
 
     override suspend fun provideSubtasks(
-        intent: Intent, friendshipId: FriendshipId, message: UserMessage
+        intent: Intent, friendshipId: FriendshipId, message: UserMessage,
     ): List<Subtask> {
         val extracted = taskClassifier.extractCompleteTasks(friendshipId, message)
         return extracted.map {
@@ -81,12 +81,12 @@ class CompleteTaskSubtaskContributor(
 
 @Component
 class UpdateTaskSubtaskContributor(
-    private val taskClassifier: TaskClassifier
+    private val taskClassifier: TaskClassifier,
 ) : SubtaskContributor {
     override fun forIntent() = TaskIntents.Update
 
     override suspend fun provideSubtasks(
-        intent: Intent, friendshipId: FriendshipId, message: UserMessage
+        intent: Intent, friendshipId: FriendshipId, message: UserMessage,
     ): List<Subtask> {
         val extracted = taskClassifier.extractUpdateTasks(friendshipId, message)
         return extracted.map {
@@ -101,13 +101,34 @@ class UpdateTaskSubtaskContributor(
 }
 
 @Component
+class RenameTaskSubtaskContributor(
+    private val taskClassifier: TaskClassifier,
+) : SubtaskContributor {
+    override fun forIntent() = TaskIntents.Rename
+
+    override suspend fun provideSubtasks(
+        intent: Intent, friendshipId: FriendshipId, message: UserMessage,
+    ): List<Subtask> {
+        val extracted = taskClassifier.extractUpdateTasks(friendshipId, message)
+        return extracted.map {
+            Subtask(
+                SubtaskId.from(friendshipId, intent, message.messageId),
+                intent = TaskIntents.Update,
+                description = "Rename task: ${it.relevantText.take(40)}",
+                parameters = mapOf("rawText" to it.relevantText)
+            )
+        }
+    }
+}
+
+@Component
 class RemoveTaskSubtaskContributor(
-    private val taskClassifier: TaskClassifier
+    private val taskClassifier: TaskClassifier,
 ) : SubtaskContributor {
     override fun forIntent() = TaskIntents.Remove
 
     override suspend fun provideSubtasks(
-        intent: Intent, friendshipId: FriendshipId, message: UserMessage
+        intent: Intent, friendshipId: FriendshipId, message: UserMessage,
     ): List<Subtask> {
         val extracted = taskClassifier.extractRemoveTasks(friendshipId, message)
         return extracted.map {
@@ -126,7 +147,7 @@ class CleanupTasksSubtaskContributor : SubtaskContributor {
     override fun forIntent() = TaskIntents.Cleanup
 
     override suspend fun provideSubtasks(
-        intent: Intent, friendshipId: FriendshipId, message: UserMessage
+        intent: Intent, friendshipId: FriendshipId, message: UserMessage,
     ): List<Subtask> {
         return listOf(
             Subtask(
