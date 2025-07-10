@@ -40,7 +40,7 @@ class LlmClientTest {
                 )
             ).isEqualTo(answer)
             verify { chatClient.prompt(any<Prompt>()) }
-            verify(exactly = 1) { requestSpec.tools(tools) }
+            verify(exactly = 1) { requestSpec.tools(*tools.toTypedArray()) }
         }
 
         @Test
@@ -93,7 +93,7 @@ class LlmClientTest {
                 )
             ).isEqualTo(answer)
             verify { chatClient.prompt(any<Prompt>()) }
-            verify(exactly = 1) { requestSpec.tools(tools) }
+            verify(exactly = 1) { requestSpec.tools(*tools.toTypedArray()) }
         }
 
         @Test

@@ -25,11 +25,11 @@ class LlmClient(
         retryConfig: RetryConfig = RetryConfig(),
     ): String? {
         var options = ollamaOptions
-        repeat(retryConfig.maxRetries + 1) { trial ->
+        repeat(max(1, retryConfig.maxRetries)) { trial ->
             try {
                 val answer =
                     chatClient.prompt(Prompt(messages, options))
-                        .apply { tools?.takeIf { it.isNotEmpty() }?.let { this.tools(it) } }
+                        .apply { tools?.takeIf { it.isNotEmpty() }?.let { this.tools(*it.toTypedArray()) } }
                         .toolContext(
                             (context?.plus(loadDefaultContext(timezone, receivedAt)) ?: loadDefaultContext(
                                 timezone, receivedAt
@@ -54,10 +54,10 @@ class LlmClient(
         retryConfig: RetryConfig = RetryConfig(),
     ): String? {
         var options = ollamaOptions
-        repeat(retryConfig.maxRetries + 1) { trial ->
+        repeat(max(1, retryConfig.maxRetries)) { trial ->
             try {
                 val prompt = chatClient.prompt(Prompt(messages, options))
-                tools?.takeIf { it.isNotEmpty() }?.let { prompt.tools(it) }
+                tools?.takeIf { it.isNotEmpty() }?.let { prompt.tools(*it.toTypedArray()) }
                 val answer = prompt.toolContext(
                     (context?.plus(loadDefaultContext(timezone, receivedAt)) ?: loadDefaultContext(
                         timezone, receivedAt
