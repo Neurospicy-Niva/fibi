@@ -140,17 +140,17 @@ Make it easy and friendly to answer.""")
                 val questions =
                     result.updatedContext.subtaskClarificationQuestions.joinToString("\n") { "- ${it.text}" }
 
-                sendMessage(
-                    event, """
+                val msg = """
 For the answer combine the following instructions:${resultPrompts}
 ---
 Ask the user to answer the following question(s) to continue with their task(s):
 $questions
 Make it easy and friendly to answer.
-⚠️ Just return the answer, no explanation!
+
+⚠️ Just return the questions, no explanation!
 ---
                 """.trimIndent()
-                )
+                sendMessage(event, msg)
             }
 
             result.complete() -> {
