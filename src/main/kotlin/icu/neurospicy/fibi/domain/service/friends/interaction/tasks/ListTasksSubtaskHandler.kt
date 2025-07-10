@@ -36,10 +36,10 @@ class ListTasksSubtaskHandler(
             val taskListText = tasks.sortedBy { it.title }.groupBy { it.completed }.map { groupedTasks ->
                 groupedTasks.key to groupedTasks.value.joinToString("\n") {
                     "- ${it.title}, description: ${it.description ?: "(none)"}, id=${it.id}"
-                }
+                }.ifBlank { "(none)" }
             }.toMap()
-            val completedTaskListText = taskListText[true]
-            val ongoingTaskListText = taskListText[false]
+            val completedTaskListText = taskListText[true] ?: "(none)"
+            val ongoingTaskListText = taskListText[false] ?: "(none)"
             val prompt = """
                 You are helping to identify which task the user wants to view.
 
@@ -63,8 +63,7 @@ class ListTasksSubtaskHandler(
                 Message:
                 "$rawText"
             """.trimIndent()
-
-            val resultCsv = llmClient.promptReceivingJson(
+            val resultCsv = llmClient.promptReceivingText(
                 listOf(UserMessage(prompt)),
                 OllamaOptions.builder().model(complexTaskModel).temperature(0.0).topP(0.8).build(),
                 timezone,
